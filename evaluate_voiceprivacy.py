@@ -28,6 +28,7 @@ DEFAULT_WHISPER_MODEL = (
     Path.home()
     / ".cache/huggingface/hub/models--Systran--faster-whisper-small/snapshots/536b0662742c02347bc0e980a01041f333bce120"
 )
+DEFAULT_SPEAKER_SAVEDIR_ROOT = Path("/private/tmp/speechbrain_ecapa_eval")
 AUDIO_SUFFIXES = (".wav", ".m4a", ".mp3", ".flac", ".ogg", ".aac")
 
 ASV_WORKER = r"""
@@ -53,9 +54,12 @@ os.environ['TRANSFORMERS_OFFLINE'] = '1'
 request_path = Path(sys.argv[1])
 request = json.loads(request_path.read_text(encoding='utf-8'))
 model_dir = Path(request['speaker_model'])
+savedir_root = Path(request.get('speaker_savedir_root', '/private/tmp/speechbrain_ecapa_eval'))
+savedir = savedir_root / f"ecapa_{os.getpid()}"
 classifier = EncoderClassifier.from_hparams(
     source=str(model_dir),
-    savedir=str(model_dir),
+    savedir=str(savedir),
+    overrides={'pretrained_path': str(model_dir)},
     local_strategy=LocalStrategy.COPY_SKIP_CACHE,
     fetch_config=FetchConfig(allow_network=False),
     run_opts={'device': 'cpu'},
@@ -125,6 +129,11 @@ def parse_args() -> argparse.Namespace:
         help="Local path to the cached SpeechBrain ECAPA speaker model.",
     )
     parser.add_argument(
+        "--speaker-savedir-root",
+        default=str(DEFAULT_SPEAKER_SAVEDIR_ROOT),
+        help="Writable directory used by SpeechBrain while loading the cached speaker model.",
+    )
+    parser.add_argument(
         "--whisper-model",
         default=str(DEFAULT_WHISPER_MODEL),
         help="Local path to the cached faster-whisper model.",
@@ -186,23 +195,36 @@ def build_variant_records(project_root: Path, selection_sets: dict[str, list[dic
 
 
 
-def run_asv_embeddings(audio_paths: list[Path], asv_python: Path, speaker_model: Path) -> dict[str, np.ndarray]:
+def run_asv_embeddings(
+    audio_paths: list[Path],
+    asv_python: Path,
+    speaker_model: Path,
+    speaker_savedir_root: Path,
+) -> dict[str, np.ndarray]:
     request = {
         "paths": [str(path) for path in audio_paths],
         "speaker_model": str(speaker_model),
+        "speaker_savedir_root": str(speaker_savedir_root),
     }
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as handle:
         json.dump(request, handle, ensure_ascii=False)
         request_path = Path(handle.name)
     try:
-        output = subprocess.check_output(
+        process = subprocess.run(
             [str(asv_python), "-c", ASV_WORKER, str(request_path)],
             text=True,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
         )
     finally:
         request_path.unlink(missing_ok=True)
-    payload = json.loads(output)
+    if process.returncode != 0:
+        raise RuntimeError(
+            "ASV embedding worker failed.\n"
+            f"Command: {asv_python} -c <ASV_WORKER> {request_path}\n"
+            f"stdout:\n{process.stdout}\n"
+            f"stderr:\n{process.stderr}"
+        )
+    payload = json.loads(process.stdout)
     return {path: np.asarray(vector, dtype=np.float32) for path, vector in payload["embeddings"].items()}
 
 
@@ -289,6 +311,7 @@ def main() -> None:
         audio_paths=list(unique_audio_paths.values()),
         asv_python=Path(args.asv_python).expanduser().resolve(),
         speaker_model=Path(args.speaker_model).expanduser().resolve(),
+        speaker_savedir_root=Path(args.speaker_savedir_root).expanduser().resolve(),
     )
     source_enrollment = average_embedding([embeddings[str(path)] for path in source_paths])
 
@@ -352,8 +375,12 @@ def main() -> None:
         total_tokens = 0
         for item in items:
             source_path = item["source_path"]
-            hypothesis_text = transcribe_audio(whisper_model, item["final_output"], args.language)
-            transcript_cache[str(item["final_output"])] = hypothesis_text
+            final_output_key = str(item["final_output"])
+            if final_output_key in transcript_cache:
+                hypothesis_text = transcript_cache[final_output_key]
+            else:
+                hypothesis_text = transcribe_audio(whisper_model, item["final_output"], args.language)
+                transcript_cache[final_output_key] = hypothesis_text
             reference_text = transcript_cache[str(source_path)]
             reference_tokens = normalize_transcript(reference_text)
             hypothesis_tokens = normalize_transcript(hypothesis_text)
@@ -385,6 +412,7 @@ def main() -> None:
             },
         }
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(results, ensure_ascii=False, indent=2))
 

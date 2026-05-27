@@ -6,3 +6,5 @@ work_pooled_verify/
 work_dual_verify/
 work_standard_probe/
 work_smooth_verify/
+work_metric_attack/
+work_metric_probe/

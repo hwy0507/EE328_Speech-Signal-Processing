@@ -67,7 +67,10 @@
 
 1. **匿名性已经比最初版本明显更强。**
 2. **female / male 双版本已经可以稳定生成。**
-3. 当前最主要的剩余问题**不是匿名性不够**，而是：
+3. 如果目标改为“提高 ASV EER + ASR WER”，当前最有效的新分支是：
+   - 先从全部 FreeVC single-reference 候选中做 metric-driven re-selection；
+   - 再叠加真实通话式、非机器人化的轻量 channel postprocess。
+4. 当前最主要的自然度剩余问题仍然是：
    - 句子内部语调连续性仍不够自然；
    - 某些音节连接处仍有明显突变；
    - `male_leaning` 分支更容易出现不够流畅的问题。
@@ -134,6 +137,22 @@
 
 - `work_smooth_verify/`
 
+### 指标增强推荐结果目录
+
+新增的 metric-attack 推荐输出位于：
+
+- `work_metric_attack/final/recommended/balanced_phone_clean_male/test_denoised_balanced_phone_clean_male.wav`
+- `work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav`
+- `work_metric_attack/final/recommended/balanced_phone_clean_female/test_denoised_balanced_phone_clean_female.wav`
+- `work_metric_attack/final/recommended/balanced_phone_clean_female/绿色_denoised_balanced_phone_clean_female.wav`
+
+对照版本：
+
+- `work_metric_attack/final/recommended/raw_metric_male/`
+- `work_metric_attack/final/recommended/raw_metric_female/`
+- `work_metric_attack/final/recommended/mixed_metric_reference/`
+- `work_metric_attack/final/recommended/max_metric_vowel_mask_reference/`
+
 旧实验目录仅作参考：
 - `work/`
 - `work_pooled_verify/`
@@ -177,6 +196,38 @@
 - 当前版本里，`male_leaning` 在匿名性上优于 `female_leaning`。
 - `female_leaning` 仍然容易被 ASV 连回原说话人。
 - 长句 `test.wav` 仍然是当前可懂度和流畅度的主要难点。
+
+### 2026-05-28 metric-attack 结果
+
+本轮用户目标改为“保持真人音色，同时尽量提高 ASV EER + ASR WER”。因此 ASR WER 在这里按攻击成功指标解释，方向为越高越好，不再按 utility 越低越好的常规 VoicePrivacy 解读。
+
+完整结果：
+
+- `work_metric_attack/voiceprivacy_metric_attack_results.json`
+- `work_metric_attack/final/recommended/recommended_summary.json`
+
+关键结果：
+
+| Variant | ASV EER ↑ | ASR WER ↑ | 解读 |
+| --- | ---: | ---: | --- |
+| previous `male_leaning` | 0.417 | 0.345 | 旧推荐结果 |
+| `raw_metric_male` | 0.583 | 0.414 | 男声候选重选，不加通道失真 |
+| `raw_metric_female` | 0.500 | 0.621 | 女声候选重选，不加通道失真 |
+| `balanced_phone_clean_male` | 0.583 | 0.655 | 男声当前推荐，干净电话通道式后处理 |
+| `balanced_phone_clean_female` | 0.500 | 1.414 | 女声当前推荐，干净电话通道式后处理 |
+| `mixed_metric_reference` | 0.583 | 1.310 | 跨性别混合指标参考，不作为双版本交付默认 |
+| `max_metric_vowel_mask_reference` | 0.542 | 4.241 | 指标上限对照，容易触发 ASR 长段幻觉 |
+
+推荐优先试听：
+
+- `work_metric_attack/final/recommended/balanced_phone_clean_male/`
+- `work_metric_attack/final/recommended/balanced_phone_clean_female/`
+
+如果只看指标上限，可试听：
+
+- `work_metric_attack/final/recommended/max_metric_vowel_mask_reference/`
+
+但注意 `max_metric_vowel_mask_reference` 的短句会触发 Whisper 很长的幻觉文本，听感风险比 `balanced_phone_clean_*` 高。
 
 ---
 
@@ -257,6 +308,27 @@
 - 用本地 cached faster-whisper small 做 ASR 转写
 - 输出 `voiceprivacy_style_results.json`
 
+当前已修复：
+- SpeechBrain 读取 HuggingFace cache 时不能在只读 cache 目录写 lock 文件的问题；
+- 现在通过 `--speaker-savedir-root` 使用 `/private/tmp/speechbrain_ecapa_eval` 作为可写 savedir；
+- 批量评估大量组合时会缓存 ASR 转写，避免重复转写相同音频。
+
+### Metric-attack 生成与导出
+
+`build_metric_attack_variants.py`
+
+职责：
+- 读取 `work_smooth_verify/evaluation_vc/*/summary.json`；
+- 组合所有 single-reference VC 候选；
+- 生成 raw 组合和 6 类通话式后处理组合；
+- 输出到 `work_metric_attack/final/preferred_variants/`。
+
+`export_metric_attack_results.py`
+
+职责：
+- 从评估结果中导出当前推荐版本；
+- 输出到 `work_metric_attack/final/recommended/`。
+
 ---
 
 ## 8. 当前环境与依赖
@@ -277,9 +349,11 @@ VoicePrivacy 风格评估额外依赖：
 - 本地可用的 faster-whisper small 模型缓存
 
 在当前机器上，评估脚本默认假设：
+- 主评估 Python: 当前 shell 的 `python`（当前为 `/opt/anaconda3/bin/python`，有 `faster_whisper`）
 - ASV Python: `/opt/anaconda3/envs/speech-anon310/bin/python`
 - Whisper model cache: `~/.cache/huggingface/hub/models--Systran--faster-whisper-small/...`
 - SpeechBrain model cache: `~/.cache/huggingface/hub/models--speechbrain--spkrec-ecapa-voxceleb/...`
+- SpeechBrain writable savedir: `/private/tmp/speechbrain_ecapa_eval`
 
 如果换机器，`evaluate_voiceprivacy.py` 里的默认路径可能需要调整。
 
@@ -309,15 +383,28 @@ python evaluate_voiceprivacy.py
 
 - `voiceprivacy_style_results.json`
 
+### 跑 metric-attack 指标增强实验
+
+```bash
+python build_metric_attack_variants.py
+python evaluate_voiceprivacy.py --selection-glob 'work_metric_attack/final/preferred_variants/*_selections.json' --output-path work_metric_attack/voiceprivacy_metric_attack_results.json
+python export_metric_attack_results.py
+```
+
+输出：
+
+- `work_metric_attack/voiceprivacy_metric_attack_results.json`
+- `work_metric_attack/final/recommended/`
+
 ---
 
 ## 10. 当前最值得继续做的事情
 
 ### 优先级最高
 
-1. **继续解决句内语调突变**
-2. **优先改善 `male_leaning` 分支的流畅度**
-3. **在保持匿名性的同时提升长句可懂度**
+1. **如果目标是攻击指标：优先试听并比较 `balanced_phone_clean_male` / `balanced_phone_clean_female` 与对应 raw 版本**
+2. **如果目标是听感自然：继续解决句内语调突变**
+3. **如果目标是极限指标：保留 `max_metric_vowel_mask_reference` 作上限对照，但不要默认作为最终听感版本**
 
 ### 推荐继续尝试的方向
 
@@ -382,7 +469,7 @@ python evaluate_voiceprivacy.py
 
 ## 13. 补充说明
 
-- 当前 `.gitignore` 忽略了 `work/`、`work_pooled_verify/`、`work_dual_verify/`、`work_standard_probe/`、`work_smooth_verify/`。
+- 当前 `.gitignore` 忽略了 `work/`、`work_pooled_verify/`、`work_dual_verify/`、`work_standard_probe/`、`work_smooth_verify/`、`work_metric_attack/`、`work_metric_probe/`。
 - 如果需要把最终试听样例上传到 GitHub，需要显式 `git add -f`。
 - 如果要做课程汇报，建议优先展示：
   - `female_leaning` 最终版

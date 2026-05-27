@@ -133,6 +133,49 @@ python evaluate_voiceprivacy.py
 完整原始结果见：
 - `voiceprivacy_style_results.json`
 
+## 指标增强实验结果
+
+根据“保持真人音色，同时尽量提高 ASV EER + ASR WER”的目标，新增了一条指标增强实验分支：
+
+- `build_metric_attack_variants.py`：从 `work_smooth_verify` 的全部 FreeVC 候选生成 raw 组合和真实通话式后处理组合。
+- `export_metric_attack_results.py`：导出推荐试听版本。
+- 完整评估结果：`work_metric_attack/voiceprivacy_metric_attack_results.json`
+- 推荐输出目录：`work_metric_attack/final/recommended/`
+
+当前推荐版本：
+
+| Variant | ASV EER ↑ | ASR WER ↑ | 说明 |
+| --- | ---: | ---: | --- |
+| previous `male_leaning` | 0.417 | 0.345 | 旧推荐结果 |
+| `raw_metric_male` | 0.583 | 0.414 | 男声候选重选，不加通道失真 |
+| `raw_metric_female` | 0.500 | 0.621 | 女声候选重选，不加通道失真 |
+| `balanced_phone_clean_male` | 0.583 | 0.655 | 男声当前推荐，干净电话通道式后处理 |
+| `balanced_phone_clean_female` | 0.500 | 1.414 | 女声当前推荐，干净电话通道式后处理 |
+| `mixed_metric_reference` | 0.583 | 1.310 | 跨性别混合指标参考，不作为双版本交付默认 |
+| `max_metric_vowel_mask_reference` | 0.542 | 4.241 | 指标上限对照，容易触发 ASR 长段幻觉，听感风险更高 |
+
+最推荐试听：
+
+- `work_metric_attack/final/recommended/balanced_phone_clean_male/test_denoised_balanced_phone_clean_male.wav`
+- `work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav`
+- `work_metric_attack/final/recommended/balanced_phone_clean_female/test_denoised_balanced_phone_clean_female.wav`
+- `work_metric_attack/final/recommended/balanced_phone_clean_female/绿色_denoised_balanced_phone_clean_female.wav`
+
+指标上限对照：
+
+- `work_metric_attack/final/recommended/max_metric_vowel_mask_reference/test_denoised_max_metric_vowel_mask_reference.wav`
+- `work_metric_attack/final/recommended/max_metric_vowel_mask_reference/绿色_denoised_max_metric_vowel_mask_reference.wav`
+
+复现实验：
+
+```bash
+python build_metric_attack_variants.py
+python evaluate_voiceprivacy.py --selection-glob 'work_metric_attack/final/preferred_variants/*_selections.json' --output-path work_metric_attack/voiceprivacy_metric_attack_results.json
+python export_metric_attack_results.py
+```
+
+说明：这里的 ASR WER 按当前目标解释为“越高越能扰乱 ASR”。这和 VoicePrivacy 里通常把 WER 当 utility、越低越好的方向相反。
+
 ## 当前技术路线总结
 
 项目在匿名目标上经历了两个阶段：

@@ -1,0 +1,48 @@
+[
+  {
+    "source_name": "test_denoised",
+    "variant": "metric_attack",
+    "selected_candidate": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/test_denoised/test_denoised_freevc_female_leaning_s4.wav",
+    "final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_female/test_denoised_raw_metric_female.wav",
+    "score": 10.967150762796596,
+    "metric_candidate_id": "f_s4",
+    "profile": {
+      "backend": "freevc",
+      "name": "freevc_female_leaning_s4",
+      "target_reference": "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav",
+      "target_strategy": "single_ref_group",
+      "target_pool_name": "female_leaning",
+      "target_reference_count": 3,
+      "target_reference_paths": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s1.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s3.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav"
+      ],
+      "postprocess": "humanize_candidate"
+    },
+    "original_final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/test_denoised/test_denoised_freevc_female_leaning_s4.wav"
+  },
+  {
+    "source_name": "绿色_denoised",
+    "variant": "metric_attack",
+    "selected_candidate": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/绿色_denoised/绿色_denoised_freevc_female_leaning_s4.wav",
+    "final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_female/绿色_denoised_raw_metric_female.wav",
+    "score": 13.849700184949548,
+    "metric_candidate_id": "f_s4",
+    "profile": {
+      "backend": "freevc",
+      "name": "freevc_female_leaning_s4",
+      "target_reference": "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav",
+      "target_strategy": "single_ref_group",
+      "target_pool_name": "female_leaning",
+      "target_reference_count": 3,
+      "target_reference_paths": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s1.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s3.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav"
+      ],
+      "postprocess": "humanize_candidate"
+    },
+    "original_final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/绿色_denoised/绿色_denoised_freevc_female_leaning_s4.wav"
+  }
+]
