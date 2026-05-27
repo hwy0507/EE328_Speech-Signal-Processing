@@ -1,0 +1,12 @@
+{
+  "name": "male_leaning",
+  "strategy": "single_ref_group",
+  "reference_paths": [
+    "../常规lab/lab9/s2.wav",
+    "../常规lab/lab9/s5.wav",
+    "../常规lab/lab9/s6.wav"
+  ],
+  "clip_seconds": 1.0,
+  "silence_ms": 80,
+  "normalize_peak_dbfs": -3.0
+}
