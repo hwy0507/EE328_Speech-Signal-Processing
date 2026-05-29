@@ -1,0 +1,118 @@
+{
+  "protocol": {
+    "privacy_metric": "ASV EER",
+    "utility_metric": "ASR WER",
+    "asv_backend": "speechbrain/spkrec-ecapa-voxceleb (cached local model)",
+    "asr_backend": "Systran/faster-whisper-small (cached local model)",
+    "trial_setup": "Source-speaker enrollment is the mean embedding of all source utterances; each anonymized output is a trial; lab reference speakers are non-target trials.",
+    "transcript_setup": "WER uses source-audio Whisper transcripts as pseudo ground truth and character-aware tokenization for Chinese."
+  },
+  "caveats": [
+    "This follows the same top-level VoicePrivacy evaluation axes (ASV-EER for privacy and ASR-WER for utility) but is not an official leaderboard submission protocol.",
+    "The evaluation set in this project is tiny, with one protected speaker and two source utterances, so the reported numbers should be treated as local benchmark signals rather than challenge-comparable figures."
+  ],
+  "source_audio": [
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a"
+  ],
+  "reference_speakers": [
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s1.wav",
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s3.wav",
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav",
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s2.wav",
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s5.wav",
+    "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav"
+  ],
+  "baseline": {
+    "source_vs_source": {
+      "eer": 0.0,
+      "threshold": 0.7156214118003845,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 0.0,
+      "target_mean_score": 0.7156214416027069,
+      "nontarget_mean_score": 0.005764729071718951,
+      "num_target_trials": 2,
+      "num_nontarget_trials": 12
+    }
+  },
+  "variants": {
+    "ppg_tone_female": {
+      "privacy": {
+        "eer": 0.5,
+        "threshold": 0.09511943906545639,
+        "false_accept_rate": 0.5,
+        "false_reject_rate": 0.5,
+        "target_mean_score": 0.06409645546227694,
+        "nontarget_mean_score": 0.09542367413329582,
+        "num_target_trials": 2,
+        "num_nontarget_trials": 12
+      },
+      "utility": {
+        "wer": 0.6896551724137931,
+        "total_edits": 20,
+        "total_reference_tokens": 29,
+        "per_utterance": [
+          {
+            "source_name": "test_denoised",
+            "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+            "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_female/test_denoised_ppg_tone_female.wav",
+            "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+            "hypothesis_text": "南方科技大學電子裏面的協議還有工程的協議心理學工程專業",
+            "edits": 17,
+            "reference_token_count": 20,
+            "wer": 0.85
+          },
+          {
+            "source_name": "绿色_denoised",
+            "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+            "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_female/绿色_denoised_ppg_tone_female.wav",
+            "reference_text": "我选择的颜色是绿色",
+            "hypothesis_text": "我现在的颜色是蜜色",
+            "edits": 3,
+            "reference_token_count": 9,
+            "wer": 0.3333333333333333
+          }
+        ]
+      }
+    },
+    "ppg_tone_male": {
+      "privacy": {
+        "eer": 0.5833333333333333,
+        "threshold": 0.08917377144098282,
+        "false_accept_rate": 0.6666666666666666,
+        "false_reject_rate": 0.5,
+        "target_mean_score": 0.060489023104310036,
+        "nontarget_mean_score": 0.09250615901934604,
+        "num_target_trials": 2,
+        "num_nontarget_trials": 12
+      },
+      "utility": {
+        "wer": 0.6551724137931034,
+        "total_edits": 19,
+        "total_reference_tokens": 29,
+        "per_utterance": [
+          {
+            "source_name": "test_denoised",
+            "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+            "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_male/test_denoised_ppg_tone_male.wav",
+            "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+            "hypothesis_text": "南方科技大學電子應變企業工程企業,實際是工程卵業",
+            "edits": 13,
+            "reference_token_count": 20,
+            "wer": 0.65
+          },
+          {
+            "source_name": "绿色_denoised",
+            "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+            "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_male/绿色_denoised_ppg_tone_male.wav",
+            "reference_text": "我选择的颜色是绿色",
+            "hypothesis_text": "我選擇的一項是鋁鎖",
+            "edits": 6,
+            "reference_token_count": 9,
+            "wer": 0.6666666666666666
+          }
+        ]
+      }
+    }
+  }
+}

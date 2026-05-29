@@ -28,6 +28,8 @@
 - `evaluate_anonymization.py`：候选评估与排序
 - `evaluate_voiceprivacy.py`：VoicePrivacy 风格匿名性 / 可懂度评估
 - `naturalness_postprocess.py`：后处理与自然度修正
+- `ppg_tone_naturalizer.py`：PPG-inspired 中文声调自然化后处理
+- `run_ppg_tone_experiment.py`：生成 PPG-tone 男声 / 女声实验输出
 
 ## 目标音色配置
 
@@ -175,6 +177,31 @@ python export_metric_attack_results.py
 ```
 
 说明：这里的 ASR WER 按当前目标解释为“越高越能扰乱 ASR”。这和 VoicePrivacy 里通常把 WER 当 utility、越低越好的方向相反。
+
+## PPG-inspired 中文声调自然化分支
+
+当前 `codex/ppg-chinese-tone-naturalness` 分支新增了一条 PPG-inspired 后处理实验：
+
+- 从 `balanced_phone_clean_male` / `balanced_phone_clean_female` 出发；
+- 构造轻量 content posterior bottleneck；
+- 分析中文 tone-like F0 contour；
+- 对匿名化结果做保守的谱包络和声调能量自然化。
+
+复现实验：
+
+```bash
+python run_ppg_tone_experiment.py
+python evaluate_voiceprivacy.py --selection-glob 'work_ppg_tone/final/recommended/*/*_selections.json' --output-path work_ppg_tone/voiceprivacy_ppg_tone_results.json
+```
+
+当前结果：
+
+| Variant | ASV EER ↑ | ASR WER ↑ | 说明 |
+| --- | ---: | ---: | --- |
+| `ppg_tone_male` | 0.583 | 0.655 | 男声指标基本保持，并加入声调自然化后处理 |
+| `ppg_tone_female` | 0.500 | 0.690 | 女声匿名性保持，但 WER 低于原推荐女声 |
+
+完整说明见 `PPG_TONE_EXPERIMENT.md`。
 
 ## 当前技术路线总结
 

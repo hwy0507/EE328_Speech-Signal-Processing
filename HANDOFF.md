@@ -44,6 +44,10 @@
    - 看降噪、预处理、轻量静噪抑制。
 9. `naturalness_postprocess.py`
    - 看后处理和 source detail 回灌逻辑。
+10. `PPG_TONE_EXPERIMENT.md`
+   - 看 PPG-inspired 中文声调自然化分支的实现、结果和局限。
+11. `ppg_tone_naturalizer.py` / `run_ppg_tone_experiment.py`
+   - 看本分支新增的声调自然化代码与批量实验入口。
 
 ---
 
@@ -74,6 +78,10 @@
    - 句子内部语调连续性仍不够自然；
    - 某些音节连接处仍有明显突变；
    - `male_leaning` 分支更容易出现不够流畅的问题。
+5. 2026-05-29 新增 PPG-inspired 中文声调自然化分支：
+   - 分支名：`codex/ppg-chinese-tone-naturalness`
+   - 新增 `ppg_tone_naturalizer.py` 和 `run_ppg_tone_experiment.py`
+   - 它不是完整 neural PPG extractor，而是轻量 content posterior bottleneck + Mandarin tone contour 后处理。
 
 ---
 
@@ -159,6 +167,18 @@
 - `work_dual_verify/`
 - `work_standard_probe/`
 
+### PPG-tone 实验输出目录
+
+PPG-inspired 中文声调自然化输出位于：
+
+- `work_ppg_tone/final/recommended/ppg_tone_male/`
+- `work_ppg_tone/final/recommended/ppg_tone_female/`
+
+完整说明：
+
+- `PPG_TONE_EXPERIMENT.md`
+- `work_ppg_tone/voiceprivacy_ppg_tone_results.json`
+
 ---
 
 ## 6. 当前评估结果（VoicePrivacy 风格）
@@ -228,6 +248,19 @@
 - `work_metric_attack/final/recommended/max_metric_vowel_mask_reference/`
 
 但注意 `max_metric_vowel_mask_reference` 的短句会触发 Whisper 很长的幻觉文本，听感风险比 `balanced_phone_clean_*` 高。
+
+### 2026-05-29 PPG-tone 结果
+
+本分支新增了 `PPG_TONE_EXPERIMENT.md`，用于记录 PPG-inspired 中文声调自然化实验。默认从 `balanced_phone_clean_male/female` 出发，使用 `--strength 0.4` 的保守后处理。
+
+当前保存的 VoicePrivacy 风格结果：
+
+| Variant | ASV EER ↑ | ASR WER ↑ | 解读 |
+| --- | ---: | ---: | --- |
+| `ppg_tone_male` | 0.583 | 0.655 | 男声指标基本保持，同时加入声调自然化后处理 |
+| `ppg_tone_female` | 0.500 | 0.690 | 女声匿名性保持，但 WER 低于原 `balanced_phone_clean_female` |
+
+结论：如果主打指标最大化，仍优先展示 `balanced_phone_clean_male/female`；如果主打“中文声调自然度 / PPG-inspired 创新点”，展示 `ppg_tone_male/female` 作为对照实验。
 
 ---
 
