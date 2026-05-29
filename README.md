@@ -31,6 +31,7 @@
 - `ppg_tone_naturalizer.py`：PPG-inspired 中文声调自然化后处理
 - `run_ppg_tone_experiment.py`：生成 PPG-tone 男声 / 女声实验输出
 - `generate_report_evaluation.py`：生成报告用评估表格和可视化图
+- `recording_demo_ui.py`：浏览器录音并自动匿名化的交互式 Demo UI
 
 ## 目标音色配置
 
@@ -227,6 +228,29 @@ python generate_report_evaluation.py
 - `REPORT_EVALUATION_SUMMARY.md`：可直接摘进报告的结果摘要
 
 报告中最直观的结论是：原始语音 ASV EER 为 `0.000`，匿名化后最高达到 `0.583`；与原说话人的 speaker similarity 从 `0.716` 降到约 `0.060`，下降约 `91.5%`。
+
+## 录音 Demo UI
+
+如果需要课堂展示“开始录音 / 结束录音 / 自动匿名化”，可以运行：
+
+```bash
+python recording_demo_ui.py
+```
+
+然后打开：
+
+```text
+http://127.0.0.1:7860
+```
+
+浏览器会请求麦克风权限。录音结束后，后端会自动生成：
+
+- `Metric+phone male`
+- `Metric+phone female`
+- `PPG-tone male`
+- `PPG-tone female`
+
+输出会保存在 `work_recording_demo/`。这是“录完后处理”的准实时展示，不是边说边输出的低延迟 streaming voice conversion。
 
 ## 当前技术路线总结
 
