@@ -101,3 +101,29 @@ python evaluate_voiceprivacy.py \
 1. 男声 `ppg_tone_male` 是目前这个分支最稳的结果：EER/WER 没有掉，且加入了声调自然化分析与轻量后处理。
 2. 女声 `ppg_tone_female` 匿名性保持，但 WER 明显低于原 `balanced_phone_clean_female`，说明自然化和可懂度之间存在冲突。
 3. 如果课程展示主打“指标最大化”，仍建议把 `balanced_phone_clean_male/female` 作为主结果；如果展示“PPG-inspired 中文声调自然化创新点”，则展示本分支的 `ppg_tone_male/female` 作为对照实验。
+
+## 7. 男声 PPG-tone 调参结论
+
+新增脚本：
+
+- `tune_ppg_tone_parameters.py`
+
+调参设置：
+
+- base variants：`raw_metric_male`、`balanced_phone_clean_male`
+- strength：`0.4 / 0.7 / 1.0 / 1.3 / 1.6`
+- EER 评估上下文：沿用报告中的 male+female reference speaker pool，使调参结果和现有报告指标可比。
+
+核心结论见：
+
+- `PPG_TONE_TUNING_RESULTS.md`
+- `ppg_tone_tuning_report/tuning_metrics.csv`
+- `ppg_tone_tuning_report/figures/tuning_objective_heatmap.png`
+- `ppg_tone_tuning_report/figures/tuning_metrics_by_strength.png`
+- `ppg_tone_tuning_report/figures/tuning_privacy_naturalness_tradeoff.png`
+
+调参结果显示：
+
+1. 如果优先考虑 ASV EER、ASR WER 和源说话人相似度下降，`balanced_phone_clean_male + PPG-tone strength=0.4` 仍是最稳版本。
+2. 提高 strength 到 `1.0/1.3/1.6` 主要改善本地 tone/naturalness proxy，但没有带来可靠的 ASV/WER 提升。
+3. 因此项目默认仍保留 `strength=0.4`；`strength=1.0` 可以作为“自然度取向 ablation”在报告里补充说明，但不替换主结果。
