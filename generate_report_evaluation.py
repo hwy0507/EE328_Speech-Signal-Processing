@@ -111,6 +111,12 @@ def parse_args() -> argparse.Namespace:
         help="Skip ECAPA embedding extraction and only generate metrics/F0 plots.",
     )
     parser.add_argument(
+        "--target-gender",
+        choices=("all", "male", "female"),
+        default="all",
+        help="Filter target-speaker variants for report/UI generation.",
+    )
+    parser.add_argument(
         "--asv-python",
         default=str(DEFAULT_ASV_PYTHON),
         help="Python executable with SpeechBrain installed.",
@@ -137,6 +143,35 @@ def read_selection_outputs(path: Path) -> list[Path]:
         return []
     items = json.loads(path.read_text(encoding="utf-8"))
     return [Path(item["final_output"]).expanduser().resolve() for item in items]
+
+
+def variant_matches_gender(method_id: str, target_gender: str) -> bool:
+    if method_id == "source_baseline" or target_gender == "all":
+        return True
+    if method_id == f"{target_gender}_leaning":
+        return True
+    return method_id.endswith(f"_{target_gender}")
+
+
+def filter_bundle_by_target(bundle: ResultBundle, target_gender: str) -> ResultBundle:
+    if target_gender == "all":
+        return bundle
+
+    metrics = bundle.metrics[bundle.metrics["method_id"].map(lambda item: variant_matches_gender(item, target_gender))].copy()
+    order_map = {method_id: index for index, method_id in enumerate(metrics["method_id"].tolist())}
+    metrics["order"] = metrics["method_id"].map(order_map)
+    metrics = metrics.sort_values("order").reset_index(drop=True)
+
+    keep_names = set(metrics["display_name"].tolist())
+    per_utterance = bundle.per_utterance.copy()
+    if not per_utterance.empty:
+        per_utterance = per_utterance[per_utterance["display_name"].isin(keep_names)].reset_index(drop=True)
+
+    return ResultBundle(
+        metrics=metrics,
+        per_utterance=per_utterance,
+        source_target_mean_score=bundle.source_target_mean_score,
+    )
 
 
 def append_variant_rows(
@@ -313,11 +348,13 @@ def save_privacy_utility_scatter(metrics: pd.DataFrame, output_path: Path) -> No
     plt.close()
 
 
-def save_utterance_wer_plot(per_utterance: pd.DataFrame, output_path: Path) -> None:
+def save_utterance_wer_plot(per_utterance: pd.DataFrame, metrics: pd.DataFrame, output_path: Path) -> None:
     if per_utterance.empty:
         return
-    order_names = [DISPLAY_NAMES[item] for item in MAIN_METHOD_ORDER if item != "source_baseline"]
+    order_names = metrics.loc[metrics["method_id"] != "source_baseline", "display_name"].tolist()
     plot_df = per_utterance[per_utterance["display_name"].isin(order_names)].copy()
+    if plot_df.empty:
+        return
     plt.figure(figsize=(11, 5.8))
     ax = sns.barplot(
         data=plot_df,
@@ -334,18 +371,21 @@ def save_utterance_wer_plot(per_utterance: pd.DataFrame, output_path: Path) -> N
     plt.close()
 
 
-def method_audio_groups(project_root: Path) -> dict[str, list[Path]]:
+def method_audio_groups(project_root: Path, target_gender: str = "all") -> dict[str, list[Path]]:
     groups: dict[str, list[Path]] = {
         "Original source": [project_root / "test.wav", project_root / "绿色.m4a"],
     }
-    for method_id in [
+    method_ids = [
         "female_leaning",
         "male_leaning",
         "balanced_phone_clean_female",
         "balanced_phone_clean_male",
         "ppg_tone_female",
         "ppg_tone_male",
-    ]:
+    ]
+    for method_id in method_ids:
+        if not variant_matches_gender(method_id, target_gender):
+            continue
         paths = read_selection_outputs(SELECTION_FILES[method_id])
         if paths:
             groups[DISPLAY_NAMES[method_id]] = paths
@@ -358,8 +398,9 @@ def save_similarity_heatmap(
     asv_python: Path,
     speaker_model: Path,
     speaker_savedir_root: Path,
+    target_gender: str = "all",
 ) -> None:
-    groups = method_audio_groups(project_root)
+    groups = method_audio_groups(project_root, target_gender=target_gender)
     unique_paths: dict[str, Path] = {}
     for paths in groups.values():
         for path in paths:
@@ -422,16 +463,25 @@ def save_similarity_heatmap(
     source_row.to_csv(output_dir / "similarity_to_source.csv", index=False)
 
 
-def plot_f0_contours(project_root: Path, output_path: Path) -> None:
+def plot_f0_contours(project_root: Path, output_path: Path, target_gender: str = "all") -> None:
     candidates = {
         "Original denoised": project_root / "work_smooth_verify/denoised/绿色_denoised.wav",
-        "Metric+phone male": project_root
-        / "work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav",
-        "Metric+phone female": project_root
-        / "work_metric_attack/final/recommended/balanced_phone_clean_female/绿色_denoised_balanced_phone_clean_female.wav",
-        "PPG-tone male": project_root / "work_ppg_tone/final/recommended/ppg_tone_male/绿色_denoised_ppg_tone_male.wav",
-        "PPG-tone female": project_root / "work_ppg_tone/final/recommended/ppg_tone_female/绿色_denoised_ppg_tone_female.wav",
     }
+    gender_candidates = {
+        "male": {
+            "Metric+phone male": project_root
+            / "work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav",
+            "PPG-tone male": project_root / "work_ppg_tone/final/recommended/ppg_tone_male/绿色_denoised_ppg_tone_male.wav",
+        },
+        "female": {
+            "Metric+phone female": project_root
+            / "work_metric_attack/final/recommended/balanced_phone_clean_female/绿色_denoised_balanced_phone_clean_female.wav",
+            "PPG-tone female": project_root / "work_ppg_tone/final/recommended/ppg_tone_female/绿色_denoised_ppg_tone_female.wav",
+        },
+    }
+    selected_genders = ("male", "female") if target_gender == "all" else (target_gender,)
+    for gender in selected_genders:
+        candidates.update(gender_candidates[gender])
 
     plt.figure(figsize=(11, 5.5))
     ax = plt.gca()
@@ -456,15 +506,23 @@ def plot_f0_contours(project_root: Path, output_path: Path) -> None:
     plt.close()
 
 
-def write_markdown_summary(bundle: ResultBundle, output_dir: Path) -> None:
+def write_markdown_summary(bundle: ResultBundle, output_dir: Path, target_gender: str = "all") -> None:
     metrics = bundle.metrics.copy()
     best_eer_value = float(metrics["asv_eer"].max())
     best_eer_names = ", ".join(metrics.loc[metrics["asv_eer"] == best_eer_value, "display_name"].tolist())
     best_wer = metrics.loc[metrics["asr_wer"].idxmax()]
     best_effect = metrics.loc[metrics["report_effect_index"].idxmax()]
-    best_similarity_drop = metrics[metrics["method_id"] != "source_baseline"].loc[
-        metrics[metrics["method_id"] != "source_baseline"]["source_similarity_reduction"].idxmax()
-    ]
+    anonymized_metrics = metrics[metrics["method_id"] != "source_baseline"]
+    best_similarity_drop = anonymized_metrics.loc[anonymized_metrics["source_similarity_reduction"].idxmax()]
+    tradeoff_candidates = metrics[metrics["method_id"].isin(["balanced_phone_clean_male", "ppg_tone_male"])]
+    if target_gender == "female":
+        tradeoff_candidates = metrics[metrics["method_id"].isin(["balanced_phone_clean_female", "ppg_tone_female"])]
+    tradeoff_text = ", ".join(tradeoff_candidates["display_name"].tolist()) or best_effect["display_name"]
+    target_label = {
+        "all": "all target-speaker conditions",
+        "male": "male target-speaker condition only",
+        "female": "female target-speaker condition only",
+    }[target_gender]
 
     display_cols = [
         "display_name",
@@ -483,16 +541,31 @@ def write_markdown_summary(bundle: ResultBundle, output_dir: Path) -> None:
             ["display_name", "wer", "hypothesis_text"]
         ]
     green_md = green_rows.to_markdown(index=False, floatfmt=".3f") if not green_rows.empty else "_No per-utterance results found._"
+    figure_descriptions = [
+        ("asv_eer_bar.png", "privacy improvement against the original source baseline."),
+        ("asr_wer_bar.png", "ASR disruption strength."),
+        ("source_similarity_reduction_bar.png", "direct speaker-identity similarity reduction."),
+        ("privacy_utility_scatter.png", "privacy/ASR trade-off."),
+        ("speaker_similarity_heatmap.png", "intuitive ECAPA embedding similarity map."),
+        ("green_f0_contours.png", "tone/F0 contour comparison for the Mandarin short utterance."),
+        ("effect_index_bar.png", "combined local privacy/effect index."),
+        ("per_utterance_wer_bar.png", "utterance-level ASR disruption evidence."),
+    ]
+    figures_md = "\n".join(
+        f"- `{filename}`: {description}"
+        for filename, description in figure_descriptions
+        if (output_dir / filename).exists()
+    )
 
     summary = f"""# Report Evaluation Summary
 
-Generated by `generate_report_evaluation.py`.
+Generated by `generate_report_evaluation.py` for **{target_label}**.
 
 ## Key Claims for the Report
 
 1. **Anonymity improves strongly:** ASV EER rises from `{metrics.iloc[0]["asv_eer"]:.3f}` for the original source to `{best_eer_value:.3f}` for `{best_eer_names}`.
 2. **Speaker identity similarity drops:** source-speaker cosine score falls from `{bundle.source_target_mean_score:.3f}` for original speech to `{best_similarity_drop["source_target_mean_score"]:.3f}` for `{best_similarity_drop["display_name"]}`, a `{best_similarity_drop["source_similarity_reduction"] * 100:.1f}%` reduction.
-3. **ASR is disrupted:** WER rises from `0.000` for the non-anonymized baseline to `{best_wer["asr_wer"]:.3f}` for `{best_wer["display_name"]}`. This highest-WER case is useful as an attack-strength result; if the report emphasizes naturalness, also discuss `Metric+phone male` / `PPG-tone male`.
+3. **ASR is disrupted:** WER rises from `0.000` for the non-anonymized baseline to `{best_wer["asr_wer"]:.3f}` for `{best_wer["display_name"]}`. For the naturalness trade-off, compare `{tradeoff_text}`.
 4. **Best visual effect index:** `{best_effect["display_name"]}` has the highest local effect index, combining ASV EER, source-similarity reduction, and WER. This is an explanatory index for the report, not an official VoicePrivacy metric.
 
 ## Main Metrics
@@ -505,12 +578,7 @@ Generated by `generate_report_evaluation.py`.
 
 ## Generated Figures
 
-- `asv_eer_bar.png`: privacy improvement against the original source baseline.
-- `asr_wer_bar.png`: ASR disruption strength.
-- `source_similarity_reduction_bar.png`: direct speaker-identity similarity reduction.
-- `privacy_utility_scatter.png`: privacy/ASR trade-off.
-- `speaker_similarity_heatmap.png`: intuitive ECAPA embedding similarity map.
-- `green_f0_contours.png`: tone/F0 contour comparison for the Mandarin short utterance.
+{figures_md}
 
 ## Suggested Caption
 
@@ -525,7 +593,7 @@ def main() -> None:
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    bundle = collect_metrics(project_root)
+    bundle = filter_bundle_by_target(collect_metrics(project_root), args.target_gender)
     metrics = bundle.metrics
     per_utterance = bundle.per_utterance
 
@@ -552,8 +620,8 @@ def main() -> None:
         output_dir / "effect_index_bar.png",
     )
     save_privacy_utility_scatter(metrics, output_dir / "privacy_utility_scatter.png")
-    save_utterance_wer_plot(per_utterance, output_dir / "per_utterance_wer_bar.png")
-    plot_f0_contours(project_root, output_dir / "green_f0_contours.png")
+    save_utterance_wer_plot(per_utterance, metrics, output_dir / "per_utterance_wer_bar.png")
+    plot_f0_contours(project_root, output_dir / "green_f0_contours.png", target_gender=args.target_gender)
 
     if not args.skip_embedding_heatmap:
         save_similarity_heatmap(
@@ -562,9 +630,10 @@ def main() -> None:
             asv_python=Path(args.asv_python).expanduser().resolve(),
             speaker_model=Path(args.speaker_model).expanduser().resolve(),
             speaker_savedir_root=Path(args.speaker_savedir_root).expanduser().resolve(),
+            target_gender=args.target_gender,
         )
 
-    write_markdown_summary(bundle, output_dir)
+    write_markdown_summary(bundle, output_dir, target_gender=args.target_gender)
     print(f"Report evaluation artifacts written to: {output_dir}")
     print((output_dir / "REPORT_EVALUATION_SUMMARY.md").read_text(encoding="utf-8"))
 

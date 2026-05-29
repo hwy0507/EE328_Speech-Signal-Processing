@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -16,11 +18,20 @@ from vc_candidate_builder import DEFAULT_VC_PYTHON, build_one_candidate
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_WORK_ROOT = PROJECT_ROOT / "work_recording_demo"
+REPORT_EVALUATION_DIR = PROJECT_ROOT / "report_evaluation_male"
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 RECOMMENDED_TARGETS = {
     "male": PROJECT_ROOT.parent / "常规lab/lab9/s6.wav",
-    "female": PROJECT_ROOT.parent / "常规lab/lab9/s4.wav",
 }
+REPORT_FIGURES = (
+    ("asv_eer_bar.png", "ASV EER"),
+    ("asr_wer_bar.png", "ASR WER"),
+    ("source_similarity_reduction_bar.png", "Source similarity reduction"),
+    ("effect_index_bar.png", "Effect index"),
+    ("privacy_utility_scatter.png", "Privacy/ASR trade-off"),
+    ("per_utterance_wer_bar.png", "Per-utterance WER"),
+    ("green_f0_contours.png", "Mandarin F0 contour"),
+)
 
 
 @dataclass(frozen=True)
@@ -103,6 +114,14 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
         results.extend(
             [
                 {
+                    "label": f"FreeVC baseline {target_name}",
+                    "method": "freevc_baseline",
+                    "target": target_name,
+                    "audio_url": build_public_url(session_dir.name, raw_output, config),
+                    "audio_path": str(raw_output),
+                    "profile": profile_payload(target_name, target_reference, "humanize_candidate"),
+                },
+                {
                     "label": f"Metric+phone {target_name}",
                     "method": "metric_phone",
                     "target": target_name,
@@ -134,12 +153,69 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
         "results": results,
         "notes": [
             "This is a record-then-process demo, not low-latency streaming.",
-            "The UI uses the same recommended target speakers as the report experiments: male=s6, female=s4.",
-            "Metric+phone outputs prioritize ASV/ASR attack strength; PPG-tone adds Mandarin tone naturalization.",
+            "The UI now uses only the recommended male target speaker: male=s6.",
+            "Each recording runs three male-target methods: FreeVC baseline, Metric+phone, and PPG-tone.",
+            "Metric+phone prioritizes ASV/ASR attack strength; PPG-tone adds Mandarin tone naturalization.",
         ],
     }
     (session_dir / "demo_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     return summary
+
+
+def run_report_evaluation() -> None:
+    command = [
+        sys.executable,
+        str(PROJECT_ROOT / "generate_report_evaluation.py"),
+        "--target-gender",
+        "male",
+        "--output-dir",
+        str(REPORT_EVALUATION_DIR),
+        "--skip-embedding-heatmap",
+    ]
+    subprocess.run(command, cwd=PROJECT_ROOT, check=True, capture_output=True, text=True)
+
+
+def load_report_evaluation_payload() -> dict[str, Any]:
+    metrics_path = REPORT_EVALUATION_DIR / "method_metrics.json"
+    per_utterance_path = REPORT_EVALUATION_DIR / "per_utterance_asr.json"
+    summary_path = REPORT_EVALUATION_DIR / "REPORT_EVALUATION_SUMMARY.md"
+    if not metrics_path.exists():
+        return {
+            "available": False,
+            "message": "Male-only evaluation has not been generated yet.",
+            "output_dir": str(REPORT_EVALUATION_DIR),
+        }
+
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    per_utterance = []
+    if per_utterance_path.exists():
+        per_utterance = json.loads(per_utterance_path.read_text(encoding="utf-8"))
+
+    figures = []
+    for filename, label in REPORT_FIGURES:
+        figure_path = REPORT_EVALUATION_DIR / filename
+        if figure_path.exists():
+            version = int(figure_path.stat().st_mtime)
+            figures.append(
+                {
+                    "label": label,
+                    "filename": filename,
+                    "url": f"/report-evaluation/{filename}?v={version}",
+                }
+            )
+
+    summary_text = summary_path.read_text(encoding="utf-8") if summary_path.exists() else ""
+    generated_at = int(metrics_path.stat().st_mtime)
+    return {
+        "available": True,
+        "target_gender": "male",
+        "output_dir": str(REPORT_EVALUATION_DIR),
+        "generated_at": generated_at,
+        "metrics": metrics,
+        "per_utterance": per_utterance,
+        "figures": figures,
+        "summary_markdown": summary_text,
+    }
 
 
 def create_app(config: DemoConfig) -> Flask:
@@ -183,6 +259,36 @@ def create_app(config: DemoConfig) -> Flask:
             return jsonify({"error": "File not found"}), 404
         return send_file(target)
 
+    @app.get("/report-evaluation/<path:filename>")
+    def report_evaluation_file(filename: str):
+        base = REPORT_EVALUATION_DIR.resolve()
+        target = (base / filename).resolve()
+        if not target.is_file() or base not in target.parents:
+            return jsonify({"error": "File not found"}), 404
+        return send_file(target)
+
+    @app.get("/api/report-evaluation")
+    def get_report_evaluation():
+        return jsonify(load_report_evaluation_payload())
+
+    @app.post("/api/report-evaluation")
+    def refresh_report_evaluation():
+        try:
+            run_report_evaluation()
+        except subprocess.CalledProcessError as exc:
+            return (
+                jsonify(
+                    {
+                        "available": False,
+                        "error": "Report evaluation failed.",
+                        "stdout": exc.stdout,
+                        "stderr": exc.stderr,
+                    }
+                ),
+                500,
+            )
+        return jsonify(load_report_evaluation_payload())
+
     @app.get("/api/config")
     def api_config():
         return jsonify(
@@ -214,6 +320,8 @@ INDEX_HTML = """
       --accent: #0f766e;
       --accent-dark: #115e59;
       --danger: #b42318;
+      --good: #16794c;
+      --soft: #eef5f4;
     }
     * { box-sizing: border-box; }
     body {
@@ -298,8 +406,14 @@ INDEX_HTML = """
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
     }
     .result {
       border: 1px solid var(--line);
@@ -310,6 +424,81 @@ INDEX_HTML = """
     .result h3 {
       margin: 0 0 4px;
       font-size: 16px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--soft);
+      min-height: 90px;
+    }
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .metric .value {
+      color: var(--good);
+      font-size: 24px;
+      font-weight: 750;
+      line-height: 1.1;
+    }
+    .metric .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .figure {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+    }
+    .figure h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid #edf0f2;
+      border-radius: 6px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+      background: #fff;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 10px;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f5f6;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .eval-status {
+      color: var(--muted);
+      font-size: 14px;
     }
     .path {
       margin-top: 8px;
@@ -331,7 +520,7 @@ INDEX_HTML = """
     }
     @media (max-width: 760px) {
       header { display: block; }
-      .grid { grid-template-columns: 1fr; }
+      .grid, .metric-grid, .figure-grid { grid-template-columns: 1fr; }
       main { padding: 20px 14px 32px; }
     }
   </style>
@@ -341,7 +530,7 @@ INDEX_HTML = """
     <header>
       <div>
         <h1>Speech Anonymization Recorder</h1>
-        <p>点击开始录音，结束后自动生成 Metric+phone 和 PPG-tone 的男声/女声匿名化版本。</p>
+        <p>录音后生成男声目标下的 FreeVC baseline、Metric+phone 和 PPG-tone 三种匿名化版本。</p>
       </div>
       <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready</span></div>
     </header>
@@ -363,6 +552,16 @@ INDEX_HTML = """
       <div id="results" class="grid"></div>
       <div id="summary"></div>
     </section>
+
+    <section class="panel">
+      <h2>项目评估结果</h2>
+      <p>Male-only 固定测试集结果，用 ASV EER、ASR WER、源说话人相似度下降和综合效果指数展示匿名化效果。</p>
+      <div class="controls">
+        <button class="secondary" id="evalBtn">刷新评估结果</button>
+        <span class="eval-status" id="evalStatus">Not loaded</span>
+      </div>
+      <div id="evaluation"></div>
+    </section>
   </main>
 
   <script>
@@ -375,6 +574,9 @@ INDEX_HTML = """
     const results = document.getElementById("results");
     const summary = document.getElementById("summary");
     const errorBox = document.getElementById("error");
+    const evalBtn = document.getElementById("evalBtn");
+    const evalStatus = document.getElementById("evalStatus");
+    const evaluation = document.getElementById("evaluation");
 
     let mediaRecorder = null;
     let chunks = [];
@@ -446,6 +648,8 @@ INDEX_HTML = """
           throw new Error(payload.error || JSON.stringify(payload));
         }
         renderResults(payload);
+        setStatus("Evaluating report");
+        await loadEvaluation(true);
         setStatus("Done");
       } catch (error) {
         showError("处理失败：\\n" + error.message);
@@ -456,28 +660,184 @@ INDEX_HTML = """
       }
     });
 
+    evalBtn.addEventListener("click", async () => {
+      await loadEvaluation(true);
+    });
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatNumber(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? number.toFixed(3) : "-";
+    }
+
+    function formatPercent(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${(number * 100).toFixed(1)}%` : "-";
+    }
+
+    function methodDescription(method) {
+      const descriptions = {
+        freevc_baseline: "FreeVC 直接声纹转换基线",
+        metric_phone: "指标增强的电话信道版本",
+        ppg_tone: "中文声调自然化版本",
+      };
+      return descriptions[method] || "匿名化版本";
+    }
+
+    function bestBy(rows, key) {
+      return rows.reduce((best, row) => Number(row[key]) > Number(best[key]) ? row : best, rows[0]);
+    }
+
     function renderResults(payload) {
       results.innerHTML = "";
       for (const item of payload.results || []) {
         const card = document.createElement("div");
         card.className = "result";
         card.innerHTML = `
-          <h3>${item.label}</h3>
-          <p>${item.method === "ppg_tone" ? "中文声调自然化版本" : "指标增强版本"}</p>
-          <audio controls src="${item.audio_url}"></audio>
-          <div class="path">${item.audio_path}</div>
+          <h3>${escapeHtml(item.label)}</h3>
+          <p>${escapeHtml(methodDescription(item.method))}</p>
+          <audio controls src="${escapeHtml(item.audio_url)}"></audio>
+          <div class="path">${escapeHtml(item.audio_path)}</div>
         `;
         results.appendChild(card);
       }
       summary.innerHTML = `
         <h3>Session</h3>
-        <pre>${JSON.stringify({
+        <pre>${escapeHtml(JSON.stringify({
           session_id: payload.session_id,
           denoised_path: payload.denoised_path,
           notes: payload.notes
-        }, null, 2)}</pre>
+        }, null, 2))}</pre>
       `;
     }
+
+    async function loadEvaluation(refresh) {
+      evalBtn.disabled = true;
+      evalStatus.textContent = refresh ? "Running evaluation..." : "Loading...";
+      try {
+        const response = await fetch("/api/report-evaluation", { method: refresh ? "POST" : "GET" });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || payload.stderr || JSON.stringify(payload));
+        }
+        renderEvaluation(payload);
+        if (payload.available) {
+          evalStatus.textContent = `Updated ${new Date(payload.generated_at * 1000).toLocaleString()}`;
+        } else {
+          evalStatus.textContent = payload.message || "No evaluation yet";
+        }
+      } catch (error) {
+        evalStatus.textContent = "Failed";
+        evaluation.innerHTML = `<div class="error">评估失败：\\n${escapeHtml(error.message)}</div>`;
+      } finally {
+        evalBtn.disabled = false;
+      }
+    }
+
+    function renderEvaluation(payload) {
+      if (!payload.available) {
+        evaluation.innerHTML = `<p>${escapeHtml(payload.message || "No evaluation available.")}</p>`;
+        return;
+      }
+
+      const rows = payload.metrics || [];
+      const anonymizedRows = rows.filter(row => row.method_id !== "source_baseline");
+      if (!rows.length || !anonymizedRows.length) {
+        evaluation.innerHTML = "<p>评估结果为空。</p>";
+        return;
+      }
+
+      const bestEer = bestBy(anonymizedRows, "asv_eer");
+      const bestWer = bestBy(anonymizedRows, "asr_wer");
+      const bestDrop = bestBy(anonymizedRows, "source_similarity_reduction");
+      const bestEffect = bestBy(anonymizedRows, "report_effect_index");
+      const greenRows = (payload.per_utterance || []).filter(item => item.source_name === "green" || item.source_name === "绿色");
+
+      const cards = [
+        ["Best ASV EER", formatNumber(bestEer.asv_eer), bestEer.display_name],
+        ["Best ASR WER", formatNumber(bestWer.asr_wer), bestWer.display_name],
+        ["Max source-sim drop", formatPercent(bestDrop.source_similarity_reduction), bestDrop.display_name],
+        ["Best effect index", formatNumber(bestEffect.report_effect_index), bestEffect.display_name],
+      ].map(([label, value, sub]) => `
+        <div class="metric">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(value)}</div>
+          <div class="sub">${escapeHtml(sub)}</div>
+        </div>
+      `).join("");
+
+      const tableRows = rows.map(row => `
+        <tr>
+          <td>${escapeHtml(row.display_name)}</td>
+          <td>${escapeHtml(row.method_group)}</td>
+          <td>${formatNumber(row.asv_eer)}</td>
+          <td>${formatNumber(row.asr_wer)}</td>
+          <td>${formatNumber(row.source_target_mean_score)}</td>
+          <td>${formatPercent(row.source_similarity_reduction)}</td>
+          <td>${formatNumber(row.report_effect_index)}</td>
+        </tr>
+      `).join("");
+
+      const greenTable = greenRows.length ? `
+        <h3>绿色.m4a ASR Evidence</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Method</th><th>WER</th><th>Whisper hypothesis</th></tr></thead>
+            <tbody>
+              ${greenRows.map(row => `
+                <tr>
+                  <td>${escapeHtml(row.display_name)}</td>
+                  <td>${formatNumber(row.wer)}</td>
+                  <td>${escapeHtml(row.hypothesis_text)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : "";
+
+      const figures = (payload.figures || []).map(figure => `
+        <div class="figure">
+          <h3>${escapeHtml(figure.label)}</h3>
+          <img src="${escapeHtml(figure.url)}" alt="${escapeHtml(figure.label)}">
+        </div>
+      `).join("");
+
+      evaluation.innerHTML = `
+        <div class="metric-grid">${cards}</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Group</th>
+                <th>ASV EER</th>
+                <th>ASR WER</th>
+                <th>Source score</th>
+                <th>Similarity drop</th>
+                <th>Effect index</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+        ${greenTable}
+        <div class="figure-grid">${figures}</div>
+        <div class="path">${escapeHtml(payload.output_dir)}</div>
+      `;
+    }
+
+    window.addEventListener("load", () => {
+      loadEvaluation(false);
+    });
   </script>
 </body>
 </html>
