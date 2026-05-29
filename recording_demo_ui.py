@@ -24,13 +24,11 @@ RECOMMENDED_TARGETS = {
     "male": PROJECT_ROOT.parent / "常规lab/lab9/s6.wav",
 }
 REPORT_FIGURES = (
-    ("asv_eer_bar.png", "ASV EER"),
-    ("asr_wer_bar.png", "ASR WER"),
-    ("source_similarity_reduction_bar.png", "Source similarity reduction"),
-    ("effect_index_bar.png", "Effect index"),
-    ("privacy_utility_scatter.png", "Privacy/ASR trade-off"),
-    ("per_utterance_wer_bar.png", "Per-utterance WER"),
-    ("green_f0_contours.png", "Mandarin F0 contour"),
+    ("report_takeaway_dashboard.png", "Project effect summary"),
+    ("speaker_identity_ladder.png", "Speaker identity leakage"),
+    ("method_scoreboard.png", "Method scoreboard"),
+    ("green_transcript_comparison.png", "ASR transcript example"),
+    ("green_waveform_comparison.png", "Waveform comparison"),
 )
 
 
@@ -450,7 +448,7 @@ INDEX_HTML = """
     }
     .figure-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr);
       gap: 14px;
       margin-top: 14px;
     }
