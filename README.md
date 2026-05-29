@@ -30,6 +30,7 @@
 - `naturalness_postprocess.py`：后处理与自然度修正
 - `ppg_tone_naturalizer.py`：PPG-inspired 中文声调自然化后处理
 - `run_ppg_tone_experiment.py`：生成 PPG-tone 男声 / 女声实验输出
+- `generate_report_evaluation.py`：生成报告用评估表格和可视化图
 
 ## 目标音色配置
 
@@ -202,6 +203,30 @@ python evaluate_voiceprivacy.py --selection-glob 'work_ppg_tone/final/recommende
 | `ppg_tone_female` | 0.500 | 0.690 | 女声匿名性保持，但 WER 低于原推荐女声 |
 
 完整说明见 `PPG_TONE_EXPERIMENT.md`。
+
+## 报告用可视化评估
+
+如果需要为课程报告生成直观图表，可以运行：
+
+```bash
+python generate_report_evaluation.py
+```
+
+输出目录：
+
+- `report_evaluation/`
+
+其中包含：
+
+- `asv_eer_bar.png`：ASV EER 隐私提升柱状图
+- `asr_wer_bar.png`：ASR WER 扰动柱状图
+- `source_similarity_reduction_bar.png`：与原说话人的 speaker similarity 下降比例
+- `speaker_similarity_heatmap.png`：ECAPA speaker embedding 相似度热力图
+- `privacy_utility_scatter.png`：隐私 / ASR 扰动折中散点图
+- `green_f0_contours.png`：`绿色.m4a` 的 F0 / 声调曲线对照
+- `REPORT_EVALUATION_SUMMARY.md`：可直接摘进报告的结果摘要
+
+报告中最直观的结论是：原始语音 ASV EER 为 `0.000`，匿名化后最高达到 `0.583`；与原说话人的 speaker similarity 从 `0.716` 降到约 `0.060`，下降约 `91.5%`。
 
 ## 当前技术路线总结
 

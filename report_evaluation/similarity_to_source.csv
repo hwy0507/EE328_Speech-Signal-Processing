@@ -1,0 +1,7 @@
+method,similarity_to_source
+PPG-tone male,0.06597873
+Metric+phone male,0.06681535
+Metric+phone female,0.07082425
+PPG-tone female,0.071553364
+FreeVC male,0.1728233
+FreeVC female,0.25707304
