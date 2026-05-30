@@ -13,6 +13,17 @@ from flask import Flask, Response, jsonify, request, send_file
 
 from audio_preprocess import preprocess_file
 from build_metric_attack_variants import ATTACK_PROFILES, apply_attack_profile
+from evaluate_voiceprivacy import (
+    DEFAULT_ASV_PYTHON,
+    DEFAULT_SPEAKER_MODEL,
+    DEFAULT_SPEAKER_SAVEDIR_ROOT,
+    DEFAULT_WHISPER_MODEL,
+    cosine_score,
+    edit_distance,
+    normalize_transcript,
+    run_asv_embeddings,
+    transcribe_audio,
+)
 from ppg_tone_naturalizer import naturalize_file
 from vc_candidate_builder import DEFAULT_VC_PYTHON, build_one_candidate
 
@@ -78,6 +89,70 @@ def profile_payload(target_name: str, target_reference: Path, postprocess: str) 
 def build_public_url(session_id: str, path: Path, config: DemoConfig) -> str:
     relative = path.relative_to(config.work_root)
     return f"/outputs/{session_id}/{relative.as_posix().split('/', 1)[1]}"
+
+
+def clamp01(value: float) -> float:
+    return min(max(value, 0.0), 1.0)
+
+
+def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]], session_dir: Path) -> dict[str, Any]:
+    from faster_whisper import WhisperModel
+
+    output_paths = [Path(item["audio_path"]).expanduser().resolve() for item in results]
+    denoised_resolved = denoised_path.expanduser().resolve()
+    all_paths = [denoised_resolved, *output_paths]
+    embeddings = run_asv_embeddings(
+        all_paths,
+        DEFAULT_ASV_PYTHON,
+        DEFAULT_SPEAKER_MODEL,
+        DEFAULT_SPEAKER_SAVEDIR_ROOT,
+    )
+    source_embedding = embeddings[str(denoised_resolved)]
+
+    whisper_model = WhisperModel(str(DEFAULT_WHISPER_MODEL), device="cpu", compute_type="int8")
+    reference_text = transcribe_audio(whisper_model, denoised_resolved, "zh")
+    reference_tokens = normalize_transcript(reference_text)
+    token_count = max(len(reference_tokens), 1)
+
+    rows: list[dict[str, Any]] = []
+    for item, output_path in zip(results, output_paths):
+        output_embedding = embeddings[str(output_path)]
+        similarity = cosine_score(source_embedding, output_embedding)
+        similarity_drop = clamp01(1.0 - similarity)
+        hypothesis_text = transcribe_audio(whisper_model, output_path, "zh")
+        edits = edit_distance(reference_tokens, normalize_transcript(hypothesis_text))
+        wer = edits / token_count
+        local_effect_index = 0.55 * similarity_drop + 0.45 * clamp01(wer)
+        rows.append(
+            {
+                "label": item["label"],
+                "method": item["method"],
+                "source_similarity": similarity,
+                "source_similarity_reduction": similarity_drop,
+                "asr_wer": wer,
+                "asr_edits": edits,
+                "reference_token_count": token_count,
+                "reference_text": reference_text,
+                "hypothesis_text": hypothesis_text,
+                "local_effect_index": local_effect_index,
+            }
+        )
+
+    ranked = sorted(rows, key=lambda row: (row["local_effect_index"], row["source_similarity_reduction"], row["asr_wer"]), reverse=True)
+    rank_by_label = {row["label"]: index + 1 for index, row in enumerate(ranked)}
+    for row in rows:
+        row["privacy_rank"] = rank_by_label[row["label"]]
+
+    payload = {
+        "available": True,
+        "protocol": "single-recording local evaluation",
+        "note": "Single recordings cannot produce a reliable ASV EER. This view uses source-to-output speaker similarity and ASR WER against the recording's own Whisper transcript.",
+        "source_audio": str(denoised_resolved),
+        "reference_text": reference_text,
+        "metrics": rows,
+    }
+    (session_dir / "recording_evaluation.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
 
 
 def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -> dict[str, Any]:
@@ -157,6 +232,14 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
             "Metric+phone prioritizes ASV/ASR attack strength; PPG-tone adds Mandarin tone naturalization.",
         ],
     }
+    try:
+        summary["recording_evaluation"] = evaluate_recording_session(denoised_path, results, session_dir)
+    except Exception as exc:  # noqa: BLE001 - keep generated audio usable even if local scoring fails.
+        summary["recording_evaluation"] = {
+            "available": False,
+            "error": str(exc),
+            "note": "Audio was generated, but per-recording scoring failed.",
+        }
     (session_dir / "demo_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     return summary
 
@@ -509,6 +592,23 @@ INDEX_HTML = """
       color: var(--danger);
       white-space: pre-wrap;
     }
+    .notice {
+      border: 1px solid #cbd8d6;
+      background: var(--soft);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 12px 0;
+    }
+    details {
+      margin-top: 12px;
+    }
+    summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: 700;
+    }
     pre {
       background: #101820;
       color: #e8eef2;
@@ -547,19 +647,23 @@ INDEX_HTML = """
     </section>
 
     <section class="panel">
-      <h2>输出结果</h2>
+      <h2>本次录音输出与即时评估</h2>
+      <p>这里展示刚刚采集的录音、三种匿名化输出，以及针对本次录音计算的声纹相似度和 ASR 转写变化。</p>
       <div id="results" class="grid"></div>
       <div id="summary"></div>
     </section>
 
     <section class="panel">
-      <h2>项目评估结果</h2>
-      <p>Male-only 固定测试集结果，用 ASV EER、ASR WER、源说话人相似度下降和综合效果指数展示匿名化效果。</p>
-      <div class="controls">
-        <button class="secondary" id="evalBtn">刷新评估结果</button>
-        <span class="eval-status" id="evalStatus">Not loaded</span>
-      </div>
-      <div id="evaluation"></div>
+      <h2>固定 benchmark 参考</h2>
+      <p>这里是 `test.wav` 和 `绿色.m4a` 的报告基准测试，不代表刚刚网页录音的结果。</p>
+      <details>
+        <summary>展开固定测试集图表</summary>
+        <div class="controls">
+          <button class="secondary" id="evalBtn">加载 / 刷新固定 benchmark</button>
+          <span class="eval-status" id="evalStatus">Not loaded</span>
+        </div>
+        <div id="evaluation"></div>
+      </details>
     </section>
   </main>
 
@@ -647,8 +751,6 @@ INDEX_HTML = """
           throw new Error(payload.error || JSON.stringify(payload));
         }
         renderResults(payload);
-        setStatus("Evaluating report");
-        await loadEvaluation(true);
         setStatus("Done");
       } catch (error) {
         showError("处理失败：\\n" + error.message);
@@ -710,11 +812,76 @@ INDEX_HTML = """
       }
       summary.innerHTML = `
         <h3>Session</h3>
+        ${renderRecordingEvaluation(payload.recording_evaluation)}
         <pre>${escapeHtml(JSON.stringify({
           session_id: payload.session_id,
           denoised_path: payload.denoised_path,
           notes: payload.notes
         }, null, 2))}</pre>
+      `;
+    }
+
+    function renderRecordingEvaluation(evaluationPayload) {
+      if (!evaluationPayload || !evaluationPayload.available) {
+        const message = evaluationPayload?.error || "本次录音评估暂不可用，但音频已经生成。";
+        return `<div class="notice">${escapeHtml(message)}</div>`;
+      }
+
+      const rows = evaluationPayload.metrics || [];
+      if (!rows.length) {
+        return `<div class="notice">本次录音没有可展示的即时评估结果。</div>`;
+      }
+
+      const bestDrop = bestBy(rows, "source_similarity_reduction");
+      const bestWer = bestBy(rows, "asr_wer");
+      const bestEffect = bestBy(rows, "local_effect_index");
+      const cards = [
+        ["Best identity removal", formatPercent(bestDrop.source_similarity_reduction), bestDrop.label],
+        ["Best ASR WER", formatNumber(bestWer.asr_wer), bestWer.label],
+        ["Best local index", formatNumber(bestEffect.local_effect_index), bestEffect.label],
+        ["Reference transcript", "本次录音", evaluationPayload.reference_text || "-"],
+      ].map(([label, value, sub]) => `
+        <div class="metric">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(value)}</div>
+          <div class="sub">${escapeHtml(sub)}</div>
+        </div>
+      `).join("");
+
+      const tableRows = rows
+        .slice()
+        .sort((left, right) => Number(left.privacy_rank) - Number(right.privacy_rank))
+        .map(row => `
+          <tr>
+            <td>${Number(row.privacy_rank)}</td>
+            <td>${escapeHtml(row.label)}</td>
+            <td>${formatNumber(row.source_similarity)}</td>
+            <td>${formatPercent(row.source_similarity_reduction)}</td>
+            <td>${formatNumber(row.asr_wer)}</td>
+            <td>${escapeHtml(row.hypothesis_text)}</td>
+            <td>${formatNumber(row.local_effect_index)}</td>
+          </tr>
+        `).join("");
+
+      return `
+        <div class="notice">${escapeHtml(evaluationPayload.note || "")}</div>
+        <div class="metric-grid">${cards}</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Method</th>
+                <th>Source similarity</th>
+                <th>Similarity drop</th>
+                <th>ASR WER</th>
+                <th>ASR hypothesis</th>
+                <th>Local index</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
       `;
     }
 
@@ -841,7 +1008,7 @@ INDEX_HTML = """
     }
 
     window.addEventListener("load", () => {
-      loadEvaluation(false);
+      evaluation.innerHTML = `<div class="notice">固定 benchmark 需要时再加载；上方处理结果会显示本次录音的即时评估。</div>`;
     });
   </script>
 </body>
