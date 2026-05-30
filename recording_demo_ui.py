@@ -122,7 +122,8 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
         hypothesis_text = transcribe_audio(whisper_model, output_path, "zh")
         edits = edit_distance(reference_tokens, normalize_transcript(hypothesis_text))
         wer = edits / token_count
-        local_effect_index = 0.55 * similarity_drop + 0.45 * clamp01(wer)
+        content_preservation = 1.0 - clamp01(wer)
+        timbre_privacy_index = 0.70 * similarity_drop + 0.30 * content_preservation
         rows.append(
             {
                 "label": item["label"],
@@ -130,15 +131,20 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
                 "source_similarity": similarity,
                 "source_similarity_reduction": similarity_drop,
                 "asr_wer": wer,
+                "content_preservation": content_preservation,
                 "asr_edits": edits,
                 "reference_token_count": token_count,
                 "reference_text": reference_text,
                 "hypothesis_text": hypothesis_text,
-                "local_effect_index": local_effect_index,
+                "timbre_privacy_index": timbre_privacy_index,
             }
         )
 
-    ranked = sorted(rows, key=lambda row: (row["local_effect_index"], row["source_similarity_reduction"], row["asr_wer"]), reverse=True)
+    ranked = sorted(
+        rows,
+        key=lambda row: (row["timbre_privacy_index"], row["source_similarity_reduction"], row["content_preservation"]),
+        reverse=True,
+    )
     rank_by_label = {row["label"]: index + 1 for index, row in enumerate(ranked)}
     for row in rows:
         row["privacy_rank"] = rank_by_label[row["label"]]
@@ -146,7 +152,7 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
     payload = {
         "available": True,
         "protocol": "single-recording local evaluation",
-        "note": "Single recordings cannot produce a reliable ASV EER. This view uses source-to-output speaker similarity and ASR WER against the recording's own Whisper transcript.",
+        "note": "Single recordings cannot produce a reliable ASV EER. This view scores timbre anonymization with source-to-output speaker similarity, while ASR WER is used as a content-preservation check where lower is better.",
         "source_audio": str(denoised_resolved),
         "reference_text": reference_text,
         "metrics": rows,
@@ -797,6 +803,10 @@ INDEX_HTML = """
       return rows.reduce((best, row) => Number(row[key]) > Number(best[key]) ? row : best, rows[0]);
     }
 
+    function minBy(rows, key) {
+      return rows.reduce((best, row) => Number(row[key]) < Number(best[key]) ? row : best, rows[0]);
+    }
+
     function renderResults(payload) {
       results.innerHTML = "";
       for (const item of payload.results || []) {
@@ -833,12 +843,12 @@ INDEX_HTML = """
       }
 
       const bestDrop = bestBy(rows, "source_similarity_reduction");
-      const bestWer = bestBy(rows, "asr_wer");
-      const bestEffect = bestBy(rows, "local_effect_index");
+      const bestContent = minBy(rows, "asr_wer");
+      const bestEffect = bestBy(rows, "timbre_privacy_index");
       const cards = [
-        ["Best identity removal", formatPercent(bestDrop.source_similarity_reduction), bestDrop.label],
-        ["Best ASR WER", formatNumber(bestWer.asr_wer), bestWer.label],
-        ["Best local index", formatNumber(bestEffect.local_effect_index), bestEffect.label],
+        ["Best timbre removal", formatPercent(bestDrop.source_similarity_reduction), bestDrop.label],
+        ["Lowest ASR WER", formatNumber(bestContent.asr_wer), bestContent.label],
+        ["Best timbre index", formatNumber(bestEffect.timbre_privacy_index), bestEffect.label],
         ["Reference transcript", "本次录音", evaluationPayload.reference_text || "-"],
       ].map(([label, value, sub]) => `
         <div class="metric">
@@ -858,8 +868,9 @@ INDEX_HTML = """
             <td>${formatNumber(row.source_similarity)}</td>
             <td>${formatPercent(row.source_similarity_reduction)}</td>
             <td>${formatNumber(row.asr_wer)}</td>
+            <td>${formatPercent(row.content_preservation)}</td>
             <td>${escapeHtml(row.hypothesis_text)}</td>
-            <td>${formatNumber(row.local_effect_index)}</td>
+            <td>${formatNumber(row.timbre_privacy_index)}</td>
           </tr>
         `).join("");
 
@@ -874,9 +885,10 @@ INDEX_HTML = """
                 <th>Method</th>
                 <th>Source similarity</th>
                 <th>Similarity drop</th>
-                <th>ASR WER</th>
+                <th>ASR WER ↓</th>
+                <th>Content kept ↑</th>
                 <th>ASR hypothesis</th>
-                <th>Local index</th>
+                <th>Timbre index</th>
               </tr>
             </thead>
             <tbody>${tableRows}</tbody>
@@ -930,7 +942,7 @@ INDEX_HTML = """
 
       const cards = [
         ["Best ASV EER", formatNumber(bestEer.asv_eer), bestEer.display_name],
-        ["Best ASR WER", formatNumber(bestWer.asr_wer), bestWer.display_name],
+        ["Highest benchmark WER", formatNumber(bestWer.asr_wer), bestWer.display_name],
         ["Max source-sim drop", formatPercent(bestDrop.source_similarity_reduction), bestDrop.display_name],
         ["Best identity index", formatNumber(bestIdentity.identity_privacy_index), bestIdentity.display_name],
         ["Best effect index", formatNumber(bestEffect.report_effect_index), bestEffect.display_name],
