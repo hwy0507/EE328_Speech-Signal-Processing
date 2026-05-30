@@ -9,7 +9,7 @@
 这个分支尝试在现有 FreeVC 匿名化结果之上加入一个轻量的 PPG-inspired 中文声调自然化后处理：
 
 - 保留男声、女声两套输出。
-- 尽量维持原来较高的 ASV EER / ASR WER 攻击指标。
+- 尽量维持较高 ASV EER，同时观察 ASR WER 对内容保留的影响。
 - 减少匿名化语音里声调轮廓和谱细节的突兀感，让中文听起来更自然。
 
 注意：本分支没有下载或训练真正的神经 PPG extractor。实现方式是“PPG 风格内容后验 + 声调后验 + 轻量谱瓶颈后处理”，适合作为课程项目里的创新性实验分支，不应表述成完整的 neural PPG anonymizer。
@@ -67,7 +67,9 @@ python evaluate_voiceprivacy.py \
 
 ## 5. VoicePrivacy 风格结果
 
-| 版本 | 输入底座 | ASV EER ↑ | 总 ASR WER ↑ | 结果评价 |
+说明：下表是固定测试集的历史 benchmark。最终报告和 Web UI 中，`ASR WER` 应按内容保留解释，越低越好；较高 WER 只说明 ASR 更容易出错，也可能表示内容被破坏。
+
+| 版本 | 输入底座 | ASV EER ↑ | 总 ASR WER | 结果评价 |
 | --- | --- | ---: | ---: | --- |
 | `balanced_phone_clean_male` | 原推荐男声 | 0.583 | 0.655 | 原男声推荐，指标强。 |
 | `ppg_tone_male` | `balanced_phone_clean_male` | 0.583 | 0.655 | 男声指标基本保持，同时加入声调自然化后处理。 |
@@ -76,7 +78,7 @@ python evaluate_voiceprivacy.py \
 
 当前保存的逐条 WER：
 
-| 版本 | 录音 | WER ↑ | ASR 输出摘要 |
+| 版本 | 录音 | WER | ASR 输出摘要 |
 | --- | --- | ---: | --- |
 | `ppg_tone_male` | `test.wav` | 0.650 | “南方科技大学电子应变企业工程企业...” |
 | `ppg_tone_male` | `绿色.m4a` | 0.667 | “我选择的一项是铝锁” |

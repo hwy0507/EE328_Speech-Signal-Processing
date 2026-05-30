@@ -1,8 +1,10 @@
 # 语音匿名化工程实现思路
 
-更新时间：2026-05-28
+更新时间：2026-05-30
 
 本文件说明当前匿名化工程是如何实现的，以及为什么这样设计。
+
+注意：本文保留了 2026-05-28 阶段的 metric-attack 探索记录。最终展示口径以 `README.md` 和 `HANDOFF.md` 为准：项目目标是**音色匿名化 + 内容保留**，不是破坏语义内容；网页端 `ASR WER` 应解释为内容保留指标，越低越好。
 
 ## 1. 项目目标
 
@@ -11,13 +13,13 @@
 1. 仍然像真人说话；
 2. 尽量保留语句节奏和基本语义；
 3. 让说话人验证系统更难把输出语音识别回原说话人；
-4. 在当前攻击目标下，也尽量让 ASR 更难正确转写内容。
+4. 让匿名输出仍尽量可懂，避免为了提高指标而破坏语义内容。
 
 当前不是追求“合成一个完美的新说话人”，而是追求：
 
 - 原说话人身份特征被削弱；
 - 输出仍像真实录音，而不是机械变声；
-- 男声 / 女声两个匿名版本都能稳定生成。
+- 当前 Web UI 默认展示男声目标的三种匿名化方法。
 
 ## 2. 总体流程
 
@@ -196,7 +198,7 @@ test_denoised_freevc_female_leaning_s4.wav
 | 指标 | 含义 |
 | --- | --- |
 | ASV EER | 说话人验证错误率，越高越匿名 |
-| ASR WER | ASR 转写错误率，常规 utility 越低越好；本轮攻击目标里越高表示 ASR 越被扰乱 |
+| ASR WER | ASR 转写错误率；最终展示中越低越好，表示内容保留更好 |
 
 ASV 使用：
 
@@ -223,13 +225,13 @@ faster-whisper small
 
 ## 9. 第七步：指标增强分支
 
-用户后续要求是：
+2026-05-28 阶段曾探索过一个更偏攻击指标的目标：
 
 ```text
 保持真人音色的同时，尽量提高 ASV EER + ASR WER。
 ```
 
-这和传统 VoicePrivacy utility 目标不同，因为传统目标通常希望 WER 越低越好；这里希望 ASR 更难识别，所以 WER 越高越符合攻击目标。
+这属于历史探索：它和传统 VoicePrivacy utility 目标不同，因为传统目标通常希望 WER 越低越好。当前最终报告不再把 WER 越高当作成功目标，而是把这些结果作为“匿名强度/内容损失折中”的对照。
 
 为此新增了 `metric_attack` 分支。
 
@@ -306,10 +308,10 @@ work_metric_attack/final/recommended/balanced_phone_clean_female/
 
 对应指标：
 
-| 版本 | ASV EER ↑ | ASR WER ↑ | 评价 |
+| 版本 | ASV EER ↑ | ASR WER | 评价 |
 | --- | ---: | ---: | --- |
-| `balanced_phone_clean_male` | 0.583 | 0.655 | 匿名性强，ASR 扰动提升，听感风险较低 |
-| `balanced_phone_clean_female` | 0.500 | 1.414 | 匿名性较强，ASR 扰动更强，但短句内容破坏更明显 |
+| `balanced_phone_clean_male` | 0.583 | 0.655 | 匿名性强，但内容保留需要和 WER 一起权衡 |
+| `balanced_phone_clean_female` | 0.500 | 1.414 | 匿名性较强，但短句内容破坏更明显 |
 
 如果更强调自然度，可以使用 raw 版本：
 
@@ -318,7 +320,7 @@ work_metric_attack/final/recommended/raw_metric_male/
 work_metric_attack/final/recommended/raw_metric_female/
 ```
 
-如果只展示攻击上限，可以使用：
+如果只展示极端对照，可以使用：
 
 ```text
 work_metric_attack/final/recommended/max_metric_vowel_mask_reference/
@@ -332,7 +334,7 @@ work_metric_attack/final/recommended/max_metric_vowel_mask_reference/
 
 - 容易听起来不自然；
 - ASV 可能仍能利用说话节奏、频谱包络、发音习惯识别原说话人；
-- 对 ASR 的扰动不稳定；
+- 对 ASR 和内容保留的影响不稳定；
 - 很容易变成“机械变声器”。
 
 当前方案的核心是：
@@ -340,8 +342,8 @@ work_metric_attack/final/recommended/max_metric_vowel_mask_reference/
 ```text
 用 VC 改变说话人 timbre
 用候选选择保证 prosody 不崩
-用轻量后处理增加真实录音链路扰动
-用 ASV / ASR 指标反向筛选最终结果
+用轻量后处理模拟真实录音链路
+用 ASV / ASR 指标筛选隐私和内容保留折中更好的结果
 ```
 
 这比单纯调 pitch 或 EQ 更稳，也更容易解释为一个完整的语音匿名化系统。
@@ -350,8 +352,8 @@ work_metric_attack/final/recommended/max_metric_vowel_mask_reference/
 
 1. 数据集很小，只有两条 source utterance，所以 EER 数值只能做项目内比较。
 2. FreeVC 的 prosody 保真仍不是完美的，某些候选会出现句内音高跳变。
-3. ASR WER 被提高后，语义可懂度会下降；这符合当前攻击目标，但不符合传统 utility 目标。
-4. 女声指标增强版对短句 ASR 攻击很强，但内容破坏也更明显，需要人工试听确认。
+3. ASR WER 被提高后，语义可懂度会下降；最终展示时不能把 WER 越高直接当作成功。
+4. 女声指标增强版对短句内容破坏更明显，需要人工试听确认。
 5. `max_metric_vowel_mask_reference` 指标很激进，但会触发 ASR 幻觉，因此只适合作为对照。
 
 ## 13. 复现命令

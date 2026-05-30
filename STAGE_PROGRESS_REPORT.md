@@ -126,7 +126,7 @@
 
 ### 2026-05-28 指标增强补充
 
-按照“保持真人音色，同时尽量提高 ASV EER + ASR WER”的新目标，已补充一条 `metric_attack` 实验分支：
+按照“保持真人音色，同时尽量提高 ASV EER + ASR WER”的早期探索目标，已补充一条 `metric_attack` 实验分支。这里保留为历史实验记录；当前最终报告和 Web UI 以“音色匿名 + 内容保留”为准，`ASR WER` 越低表示内容保留越好。
 
 - 新增 `build_metric_attack_variants.py`，从 `work_smooth_verify` 的全部 FreeVC 候选生成 36 个 raw 组合和 216 个通话式后处理组合。
 - 修复 `evaluate_voiceprivacy.py` 在当前沙箱下的 SpeechBrain savedir 问题，并加入 ASR 转写缓存。
@@ -134,24 +134,22 @@
 
 当前指标结果：
 
-| Variant | ASV EER ↑ | ASR WER ↑ | 解读 |
+| Variant | ASV EER ↑ | ASR WER | 解读 |
 | --- | ---: | ---: | --- |
 | previous `male_leaning` | 0.417 | 0.345 | 旧推荐结果 |
 | `raw_metric_male` | 0.583 | 0.414 | 男声候选重选，不加通道失真 |
 | `raw_metric_female` | 0.500 | 0.621 | 女声候选重选，不加通道失真 |
 | `balanced_phone_clean_male` | 0.583 | 0.655 | 男声当前推荐，干净电话通道式后处理 |
-| `balanced_phone_clean_female` | 0.500 | 1.414 | 女声当前推荐，干净电话通道式后处理 |
-| `mixed_metric_reference` | 0.583 | 1.310 | 跨性别混合指标参考，不作为双版本交付默认 |
-| `max_metric_vowel_mask_reference` | 0.542 | 4.241 | 指标上限对照，ASR 会长段幻觉，听感风险更高 |
+| `balanced_phone_clean_female` | 0.500 | 1.414 | 女声历史推荐，内容破坏更明显 |
+| `mixed_metric_reference` | 0.583 | 1.310 | 跨性别混合指标参考，不作为默认交付 |
+| `max_metric_vowel_mask_reference` | 0.542 | 4.241 | 指标上限对照，ASR 会长段幻觉，不适合作为主结果 |
 
 推荐试听目录：
 
 - `work_metric_attack/final/recommended/balanced_phone_clean_male/`
-- `work_metric_attack/final/recommended/balanced_phone_clean_female/`
 - `work_metric_attack/final/recommended/raw_metric_male/`
-- `work_metric_attack/final/recommended/raw_metric_female/`
 
-注意：这里将 ASR WER 当作攻击成功指标，因此方向是越高越好；这和 VoicePrivacy 常规定义里 utility WER 越低越好的使用方式不同。
+注意：这段记录里的 WER 用法是历史探索口径。当前主线不要再追求 WER 最大化，报告应优先展示男声三方法和 source similarity / similarity drop / content kept 的折中。
 
 1. **优先继续解决句内语调突变**
    - 重点优化 `male_leaning` 分支；
