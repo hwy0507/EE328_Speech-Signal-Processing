@@ -1,6 +1,6 @@
 # VoicePrivacy 风格评估结果说明
 
-更新时间：2026-05-28
+更新时间：2026-05-30
 
 本文件汇总当前项目中各版本的 VoicePrivacy 风格评估结果，并解释这些数值代表什么。
 
@@ -15,6 +15,15 @@ ASV EER 用来衡量匿名性，越高表示越难被说话人验证系统重新
 - `0.5` 左右：在当前小样本协议下已经接近随机判断，匿名性较强。
 
 注意：当前数据只有 2 条 source utterance、1 个受保护说话人，所以 ASV EER 适合作为项目内横向比较，不等同于官方 VoicePrivacy 榜单结果。
+
+为什么很多版本都是 `0.583`：
+
+当前本地协议只有 `2` 个 target trials 和 `12` 个 non-target trials，因此 EER 不是连续变化的指标，而是会按少数几个档位跳变。多个方法同为 `0.583` 不代表它们完全一样，只代表它们落在同一个 EER 档位。为了在同档位里继续比较匿名化优劣，本项目新增以下细排指标：
+
+- `source_target_mean_score`：匿名语音和原说话人的 ECAPA 余弦相似度，越低越匿名。
+- `source_similarity_reduction`：相似度相对原始语音下降比例，越高越匿名。
+- `identity_privacy_index`：结合 EER 和相似度下降的身份隐私指数，用于 EER 同档位细排。
+- `privacy_rank`：先按 EER 排，再按 `identity_privacy_index` / 相似度下降细排。
 
 ### ASR WER
 
@@ -42,6 +51,19 @@ ASR WER 表示 ASR 转写和参考文本的差异。
 | `balanced_phone_clean_female` | 0.500 | 1.414 | 当前推荐女声版本；匿名性较强，ASR 扰动最明显，但短句内容破坏更重。 |
 | `mixed_metric_reference` | 0.583 | 1.310 | 跨性别混合指标参考，不作为男/女双版本默认交付。 |
 | `max_metric_vowel_mask_reference` | 0.542 | 4.241 | 指标上限对照；WER 很高，但短句会触发 ASR 长段幻觉，听感风险高。 |
+
+### 当前男声主报告细排
+
+男声主报告见 `report_evaluation_male/REPORT_EVALUATION_SUMMARY.md`。在男声条件下，`raw_metric_male`、`balanced_phone_clean_male`、`ppg_tone_male` 的 ASV EER 都是 `0.583`，因此用相似度下降和身份隐私指数继续细排：
+
+| 版本 | ASV EER ↑ | ASR WER ↑ | 源说话人相似度 ↓ | 相似度下降 ↑ | 身份隐私指数 ↑ | 细排 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `ppg_tone_male` | 0.583 | 0.655 | 0.060 | 91.5% | 0.966 | 1 |
+| `balanced_phone_clean_male` | 0.583 | 0.655 | 0.061 | 91.4% | 0.966 | 2 |
+| `raw_metric_male` | 0.583 | 0.414 | 0.076 | 89.4% | 0.958 | 3 |
+| `male_leaning` | 0.417 | 0.345 | 0.159 | 77.8% | 0.811 | 4 |
+
+因此，虽然前三个男声方法 EER 都显示为 `0.583`，更细的身份相似度指标仍能说明：`ppg_tone_male` 最接近当前主目标，`balanced_phone_clean_male` 次之，`raw_metric_male` 匿名性也强但 ASR 扰动较弱。
 
 ## 3. 每条录音结果
 

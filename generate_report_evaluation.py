@@ -174,6 +174,7 @@ def filter_bundle_by_target(bundle: ResultBundle, target_gender: str) -> ResultB
     metrics = bundle.metrics[bundle.metrics["method_id"].map(lambda item: variant_matches_gender(item, target_gender))].copy()
     order_map = {method_id: index for index, method_id in enumerate(metrics["method_id"].tolist())}
     metrics["order"] = metrics["method_id"].map(order_map)
+    metrics = add_derived_metrics(metrics, bundle.source_target_mean_score)
     metrics = metrics.sort_values("order").reset_index(drop=True)
 
     keep_names = set(metrics["display_name"].tolist())
@@ -291,22 +292,38 @@ def collect_metrics(project_root: Path) -> ResultBundle:
             idx,
         )
 
-    metrics = pd.DataFrame(rows)
-    metrics["source_similarity_reduction"] = 1.0 - metrics["source_target_mean_score"] / source_target_mean
-    metrics.loc[metrics["method_id"] == "source_baseline", "source_similarity_reduction"] = 0.0
-    metrics["eer_normalized_to_random"] = (metrics["asv_eer"] / 0.5).clip(lower=0.0, upper=1.0)
-    metrics["wer_capped_at_1"] = metrics["asr_wer"].clip(lower=0.0, upper=1.0)
-    metrics["report_effect_index"] = (
-        0.50 * metrics["eer_normalized_to_random"]
-        + 0.30 * metrics["source_similarity_reduction"].clip(lower=0.0, upper=1.0)
-        + 0.20 * metrics["wer_capped_at_1"]
-    )
+    metrics = add_derived_metrics(pd.DataFrame(rows), source_target_mean)
     metrics = metrics.sort_values("order").reset_index(drop=True)
 
     per_utterance = pd.DataFrame(utterance_rows)
     if not per_utterance.empty:
         per_utterance["source_name"] = per_utterance["source_name"].replace({"绿色": "green"})
     return ResultBundle(metrics=metrics, per_utterance=per_utterance, source_target_mean_score=source_target_mean)
+
+
+def add_derived_metrics(metrics: pd.DataFrame, source_target_mean: float) -> pd.DataFrame:
+    metrics = metrics.copy()
+    metrics["source_similarity_reduction"] = 1.0 - metrics["source_target_mean_score"] / source_target_mean
+    metrics.loc[metrics["method_id"] == "source_baseline", "source_similarity_reduction"] = 0.0
+    metrics["eer_normalized_to_random"] = (metrics["asv_eer"] / 0.5).clip(lower=0.0, upper=1.0)
+    metrics["wer_capped_at_1"] = metrics["asr_wer"].clip(lower=0.0, upper=1.0)
+    metrics["identity_privacy_index"] = (
+        0.60 * metrics["eer_normalized_to_random"]
+        + 0.40 * metrics["source_similarity_reduction"].clip(lower=0.0, upper=1.0)
+    )
+    metrics["report_effect_index"] = (
+        0.50 * metrics["eer_normalized_to_random"]
+        + 0.30 * metrics["source_similarity_reduction"].clip(lower=0.0, upper=1.0)
+        + 0.20 * metrics["wer_capped_at_1"]
+    )
+    metrics["privacy_rank"] = 0
+    anonymized_mask = metrics["method_id"] != "source_baseline"
+    ranked = metrics[anonymized_mask].sort_values(
+        ["asv_eer", "identity_privacy_index", "source_similarity_reduction", "asr_wer"],
+        ascending=[False, False, False, False],
+    )
+    metrics.loc[ranked.index, "privacy_rank"] = range(1, len(ranked) + 1)
+    return metrics
 
 
 def style_axes(ax: plt.Axes, title: str, ylabel: str = "") -> None:
@@ -939,6 +956,17 @@ def write_markdown_summary(bundle: ResultBundle, output_dir: Path, target_gender
     best_effect = metrics.loc[metrics["report_effect_index"].idxmax()]
     anonymized_metrics = metrics[metrics["method_id"] != "source_baseline"]
     best_similarity_drop = anonymized_metrics.loc[anonymized_metrics["source_similarity_reduction"].idxmax()]
+    best_identity_privacy = anonymized_metrics.loc[anonymized_metrics["privacy_rank"].idxmin()]
+    best_eer_tie = anonymized_metrics[anonymized_metrics["asv_eer"] == best_eer_value].sort_values(
+        ["identity_privacy_index", "source_similarity_reduction", "asr_wer"],
+        ascending=False,
+    )
+    best_eer_tie_text = ", ".join(
+        f"{row.display_name} ({row.source_similarity_reduction * 100:.1f}% drop)"
+        for row in best_eer_tie.itertuples()
+    )
+    target_trials = int(metrics["num_target_trials"].max())
+    nontarget_trials = int(metrics["num_nontarget_trials"].max())
     tradeoff_candidates = metrics[metrics["method_id"].isin(["balanced_phone_clean_male", "ppg_tone_male"])]
     if target_gender == "female":
         tradeoff_candidates = metrics[metrics["method_id"].isin(["balanced_phone_clean_female", "ppg_tone_female"])]
@@ -956,6 +984,8 @@ def write_markdown_summary(bundle: ResultBundle, output_dir: Path, target_gender
         "asr_wer",
         "source_target_mean_score",
         "source_similarity_reduction",
+        "identity_privacy_index",
+        "privacy_rank",
         "report_effect_index",
     ]
     table_md = metrics[display_cols].to_markdown(index=False, floatfmt=".3f")
@@ -980,6 +1010,7 @@ def write_markdown_summary(bundle: ResultBundle, output_dir: Path, target_gender
         ("privacy_utility_scatter.png", "privacy/ASR trade-off."),
         ("speaker_similarity_heatmap.png", "intuitive ECAPA embedding similarity map."),
         ("green_f0_contours.png", "tone/F0 contour comparison for the Mandarin short utterance."),
+        ("identity_privacy_index_bar.png", "EER-tie-aware identity privacy ranking."),
         ("effect_index_bar.png", "combined local privacy/effect index."),
         ("per_utterance_wer_bar.png", "utterance-level ASR disruption evidence."),
     ]
@@ -1005,6 +1036,11 @@ Generated by `generate_report_evaluation.py` for **{target_label}**.
 2. **Speaker identity similarity drops:** source-speaker cosine score falls from `{bundle.source_target_mean_score:.3f}` for original speech to `{best_similarity_drop["source_target_mean_score"]:.3f}` for `{best_similarity_drop["display_name"]}`, a `{best_similarity_drop["source_similarity_reduction"] * 100:.1f}%` reduction.
 3. **ASR is disrupted:** WER rises from `0.000` for the non-anonymized baseline to `{best_wer["asr_wer"]:.3f}` for `{best_wer["display_name"]}`. For the naturalness trade-off, compare `{tradeoff_text}`.
 4. **Best visual effect index:** `{best_effect["display_name"]}` has the highest local effect index, combining ASV EER, source-similarity reduction, and WER. This is an explanatory index for the report, not an official VoicePrivacy metric.
+5. **Best identity-privacy ranking:** `{best_identity_privacy["display_name"]}` ranks first when EER ties are broken by source-speaker similarity reduction.
+
+## EER Granularity Note
+
+The local test set currently has `{target_trials}` target trials and `{nontarget_trials}` non-target trials, so ASV EER changes in coarse steps. Methods with the same EER are therefore not necessarily identical. In the best-EER group, the fine-grained order by source-speaker similarity reduction is: {best_eer_tie_text}.
 
 ## Main Metrics
 
@@ -1068,6 +1104,13 @@ def main() -> None:
         "Report-Friendly Anonymization Effect Index",
         "Index ↑",
         output_dir / "effect_index_bar.png",
+    )
+    save_barplot(
+        metrics,
+        "identity_privacy_index",
+        "EER-Tie-Aware Identity Privacy Index",
+        "Index ↑",
+        output_dir / "identity_privacy_index_bar.png",
     )
     save_privacy_utility_scatter(metrics, output_dir / "privacy_utility_scatter.png")
     save_utterance_wer_plot(per_utterance, metrics, output_dir / "per_utterance_wer_bar.png")

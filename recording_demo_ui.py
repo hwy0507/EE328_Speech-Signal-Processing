@@ -27,6 +27,7 @@ REPORT_FIGURES = (
     ("report_takeaway_dashboard.png", "Project effect summary"),
     ("speaker_identity_ladder.png", "Speaker identity leakage"),
     ("method_scoreboard.png", "Method scoreboard"),
+    ("identity_privacy_index_bar.png", "Identity privacy ranking"),
     ("green_transcript_comparison.png", "ASR transcript example"),
     ("green_waveform_comparison.png", "Waveform comparison"),
 )
@@ -756,6 +757,7 @@ INDEX_HTML = """
       const bestEer = bestBy(anonymizedRows, "asv_eer");
       const bestWer = bestBy(anonymizedRows, "asr_wer");
       const bestDrop = bestBy(anonymizedRows, "source_similarity_reduction");
+      const bestIdentity = bestBy(anonymizedRows, "identity_privacy_index");
       const bestEffect = bestBy(anonymizedRows, "report_effect_index");
       const greenRows = (payload.per_utterance || []).filter(item => item.source_name === "green" || item.source_name === "绿色");
 
@@ -763,6 +765,7 @@ INDEX_HTML = """
         ["Best ASV EER", formatNumber(bestEer.asv_eer), bestEer.display_name],
         ["Best ASR WER", formatNumber(bestWer.asr_wer), bestWer.display_name],
         ["Max source-sim drop", formatPercent(bestDrop.source_similarity_reduction), bestDrop.display_name],
+        ["Best identity index", formatNumber(bestIdentity.identity_privacy_index), bestIdentity.display_name],
         ["Best effect index", formatNumber(bestEffect.report_effect_index), bestEffect.display_name],
       ].map(([label, value, sub]) => `
         <div class="metric">
@@ -780,6 +783,8 @@ INDEX_HTML = """
           <td>${formatNumber(row.asr_wer)}</td>
           <td>${formatNumber(row.source_target_mean_score)}</td>
           <td>${formatPercent(row.source_similarity_reduction)}</td>
+          <td>${formatNumber(row.identity_privacy_index)}</td>
+          <td>${row.privacy_rank ? Number(row.privacy_rank) : "-"}</td>
           <td>${formatNumber(row.report_effect_index)}</td>
         </tr>
       `).join("");
@@ -821,6 +826,8 @@ INDEX_HTML = """
                 <th>ASR WER</th>
                 <th>Source score</th>
                 <th>Similarity drop</th>
+                <th>Identity index</th>
+                <th>Privacy rank</th>
                 <th>Effect index</th>
               </tr>
             </thead>

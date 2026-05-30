@@ -14,7 +14,9 @@
     "source_similarity_reduction":0.0,
     "eer_normalized_to_random":0.0,
     "wer_capped_at_1":0.0,
-    "report_effect_index":0.0
+    "identity_privacy_index":0.0,
+    "report_effect_index":0.0,
+    "privacy_rank":0
   },
   {
     "method_id":"male_leaning",
@@ -31,7 +33,9 @@
     "source_similarity_reduction":0.7783674855,
     "eer_normalized_to_random":0.8333333333,
     "wer_capped_at_1":0.3448275862,
-    "report_effect_index":0.7191424296
+    "identity_privacy_index":0.8113469942,
+    "report_effect_index":0.7191424296,
+    "privacy_rank":4
   },
   {
     "method_id":"raw_metric_male",
@@ -48,7 +52,9 @@
     "source_similarity_reduction":0.8939237932,
     "eer_normalized_to_random":1.0,
     "wer_capped_at_1":0.4137931034,
-    "report_effect_index":0.8509357586
+    "identity_privacy_index":0.9575695173,
+    "report_effect_index":0.8509357586,
+    "privacy_rank":3
   },
   {
     "method_id":"balanced_phone_clean_male",
@@ -65,7 +71,9 @@
     "source_similarity_reduction":0.9143960524,
     "eer_normalized_to_random":1.0,
     "wer_capped_at_1":0.6551724138,
-    "report_effect_index":0.9053532985
+    "identity_privacy_index":0.965758421,
+    "report_effect_index":0.9053532985,
+    "privacy_rank":2
   },
   {
     "method_id":"ppg_tone_male",
@@ -82,6 +90,8 @@
     "source_similarity_reduction":0.9154734339,
     "eer_normalized_to_random":1.0,
     "wer_capped_at_1":0.6551724138,
-    "report_effect_index":0.9056765129
+    "identity_privacy_index":0.9661893735,
+    "report_effect_index":0.9056765129,
+    "privacy_rank":1
   }
 ]
