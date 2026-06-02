@@ -87,7 +87,15 @@ http://127.0.0.1:7862
 2. 说一段 3-10 秒中文。
 3. 点击 `结束录音`。
 4. 点击 `匿名化处理`。
-5. 等待页面生成三条匿名化音频和即时评估结果。
+5. 等待页面生成三条匿名化音频、Top 3 候选音色和即时评估结果。
+
+页面会自动使用系统排名第 1 的 shared base target，同时展示 Top 3 候选音色供试听和报告分析。Top 3 会显示下面的隐私/保真平衡分：
+
+```text
+Balance = 0.60 * Privacy + 0.40 * Fidelity
+Privacy = clamp((70 - standard_score) / 20)
+Fidelity = 0.60 * naturalness + 0.25 * duration_match + 0.15 * processing_simplicity
+```
 
 输出保存在：
 

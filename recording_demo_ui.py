@@ -118,6 +118,58 @@ def clamp01(value: float) -> float:
     return min(max(value, 0.0), 1.0)
 
 
+BALANCE_FORMULA = (
+    "Balance = 0.60*Privacy + 0.40*Fidelity; "
+    "Privacy = clamp((70 - standard_score)/20); "
+    "Fidelity = 0.60*naturalness + 0.25*duration_match + 0.15*processing_simplicity."
+)
+
+
+def candidate_balance_components(score: Any) -> dict[str, float]:
+    """Candidate-level privacy/fidelity proxy used for UI explanation."""
+    privacy_score = clamp01((70.0 - float(score.standard_similarity_score)) / 20.0)
+    duration_match = clamp01(1.0 - abs(float(score.duration_ratio) - 1.0) / 0.18)
+    processing_simplicity = clamp01(1.0 - float(score.transform_penalty) / 0.04)
+    fidelity_score = clamp01(
+        0.60 * float(score.naturalness_proxy)
+        + 0.25 * duration_match
+        + 0.15 * processing_simplicity
+    )
+    return {
+        "privacy_score": privacy_score,
+        "fidelity_score": fidelity_score,
+        "balance_score": clamp01(0.60 * privacy_score + 0.40 * fidelity_score),
+        "duration_match": duration_match,
+        "processing_simplicity": processing_simplicity,
+    }
+
+
+def top_candidate_summaries(selection: Any, session_dir: Path, config: DemoConfig, limit: int = 3) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for index, score in enumerate(selection.candidates[:limit]):
+        components = candidate_balance_components(score)
+        output_path = Path(score.output_path).expanduser().resolve()
+        summaries.append(
+            {
+                "rank": index + 1,
+                "target": f"male:{score.target_name}/{score.variant_name}",
+                "audio_path": str(output_path),
+                "audio_url": build_public_url(session_dir.name, output_path, config),
+                "standard_similarity_score": score.standard_similarity_score,
+                "naturalness_proxy": score.naturalness_proxy,
+                "selection_score": score.selection_score,
+                "privacy_score": components["privacy_score"],
+                "fidelity_score": components["fidelity_score"],
+                "balance_score": components["balance_score"],
+                "duration_ratio": score.duration_ratio,
+                "duration_match": components["duration_match"],
+                "processing_simplicity": components["processing_simplicity"],
+                "used_by_default": index == 0,
+            }
+        )
+    return summaries
+
+
 def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]], session_dir: Path) -> dict[str, Any]:
     from faster_whisper import WhisperModel
 
@@ -291,6 +343,8 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
                 "selected_naturalness_proxy": selected_score.naturalness_proxy,
                 "target_pool_size": selection.target_pool_size,
                 "evaluated_target_count": selection.evaluated_target_count,
+                "top_candidate_formula": BALANCE_FORMULA,
+                "top_candidate_summaries": top_candidate_summaries(selection, session_dir, config),
             },
             ensure_ascii=False,
             indent=2,
@@ -304,17 +358,8 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
         "denoised_path": str(denoised_path),
         "denoised_url": build_public_url(session_dir.name, denoised_path, config),
         "results": results,
-        "selection_candidates": [
-            {
-                "rank": index + 1,
-                "target": f"male:{score.target_name}/{score.variant_name}",
-                "standard_similarity_score": score.standard_similarity_score,
-                "naturalness_proxy": score.naturalness_proxy,
-                "selection_score": score.selection_score,
-                "duration_ratio": score.duration_ratio,
-            }
-            for index, score in enumerate(selection.candidates[:8])
-        ],
+        "selection_candidates": top_candidate_summaries(selection, session_dir, config),
+        "balance_formula": BALANCE_FORMULA,
         "notes": [
             "This is a record-then-process demo, not low-latency streaming.",
             "The UI evaluates a male target pool and selects the candidate with the lowest speaker-embedding similarity while penalizing over-aggressive prosody changes.",
@@ -929,45 +974,32 @@ INDEX_HTML = """
       }
       summary.innerHTML = `
         <h3>Session</h3>
-        ${renderTargetSelection(payload.selection_candidates || [])}
+        ${renderTargetSelection(payload.selection_candidates || [], payload.balance_formula || "")}
         ${renderRecordingEvaluation(payload.recording_evaluation)}
         <pre>${escapeHtml(JSON.stringify({
           session_id: payload.session_id,
           denoised_path: payload.denoised_path,
+          balance_formula: payload.balance_formula,
           notes: payload.notes
         }, null, 2))}</pre>
       `;
     }
 
-    function renderTargetSelection(candidates) {
+    function renderTargetSelection(candidates, formula) {
       if (!candidates.length) return "";
-      const rows = candidates.map(row => `
-        <tr>
-          <td>${Number(row.rank)}</td>
-          <td>${escapeHtml(row.target)}</td>
-          <td>${formatNumber(row.standard_similarity_score)}</td>
-          <td>${formatNumber(row.naturalness_proxy)}</td>
-          <td>${formatNumber(row.selection_score)}</td>
-          <td>${formatNumber(row.duration_ratio)}</td>
-        </tr>
+      const cards = candidates.map(row => `
+        <div class="result">
+          <h3>#${Number(row.rank)} ${escapeHtml(row.target)}</h3>
+          <audio controls src="${escapeHtml(row.audio_url)}"></audio>
+          <p>${row.used_by_default ? "当前自动使用的 base target" : "候选 base target"}</p>
+          <p>Balance ${formatNumber(row.balance_score)} = 0.60 privacy ${formatNumber(row.privacy_score)} + 0.40 fidelity ${formatNumber(row.fidelity_score)}</p>
+          <p>Standard ${formatNumber(row.standard_similarity_score)} / 100, naturalness ${formatNumber(row.naturalness_proxy)}, duration ${formatNumber(row.duration_ratio)}</p>
+          <div class="path">${escapeHtml(row.audio_path)}</div>
+        </div>
       `).join("");
       return `
-        <div class="notice">三种方法共享同一个最佳 base target；后面的 Metric+phone 和 PPG-tone 是在该底座音频上继续后处理。下面是本次录音的目标候选排序，selection score 同时考虑低相似度和真人音色约束。</div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Candidate</th>
-                <th>Base standard score ↓</th>
-                <th>Naturalness ↑</th>
-                <th>Selection score ↓</th>
-                <th>Duration ratio</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <div class="notice">三种方法共享 #1 base target；后面的 Metric+phone 和 PPG-tone 是在该底座音频上继续后处理。下面展示系统候选排序前 3 个音色，Balance 是额外的隐私/保真平衡解释分：${escapeHtml(formula)}</div>
+        <div class="grid">${cards}</div>
       `;
     }
 
