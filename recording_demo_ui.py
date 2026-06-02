@@ -83,11 +83,11 @@ def safe_session_id() -> str:
     return time.strftime("%Y%m%d_%H%M%S") + f"_{time.time_ns() % 1_000_000:06d}"
 
 
-def phone_clean_profile():
+def ui_clarity_profile():
     for profile in ATTACK_PROFILES:
-        if profile.name == "phone_clean":
+        if profile.name == "clarity_guard":
             return profile
-    raise RuntimeError("Missing phone_clean attack profile")
+    raise RuntimeError("Missing clarity_guard attack profile")
 
 
 def profile_payload(
@@ -119,7 +119,7 @@ def clamp01(value: float) -> float:
 
 
 BALANCE_FORMULA = (
-    "Balance = 0.60*Privacy + 0.40*Fidelity; "
+    "Balance = 0.50*Privacy + 0.50*Fidelity; "
     "Privacy = clamp((70 - standard_score)/20); "
     "Fidelity = 0.60*naturalness + 0.25*duration_match + 0.15*processing_simplicity."
 )
@@ -138,7 +138,7 @@ def candidate_balance_components(score: Any) -> dict[str, float]:
     return {
         "privacy_score": privacy_score,
         "fidelity_score": fidelity_score,
-        "balance_score": clamp01(0.60 * privacy_score + 0.40 * fidelity_score),
+        "balance_score": clamp01(0.50 * privacy_score + 0.50 * fidelity_score),
         "duration_match": duration_match,
         "processing_simplicity": processing_simplicity,
     }
@@ -242,7 +242,7 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
 def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -> dict[str, Any]:
     preprocess = preprocess_file(input_path, session_dir / "preprocess", denoise_preset="standard")
     denoised_path = preprocess.denoised_wav
-    profile = phone_clean_profile()
+    profile = ui_clarity_profile()
 
     results: list[dict[str, Any]] = []
     target_references = load_target_references(config.target_pool_config, fallback_paths=[FALLBACK_MALE_TARGET])
@@ -259,11 +259,11 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
     raw_output = selection.selected_output
     selected_score = selection.candidates[0]
 
-    phone_output = session_dir / "metric_phone" / "demo_male_metric_phone.wav"
-    apply_attack_profile(raw_output, phone_output, profile)
+    clarity_output = session_dir / "metric_clarity" / "demo_male_metric_clarity.wav"
+    apply_attack_profile(raw_output, clarity_output, profile)
     ppg_output = session_dir / "ppg_tone" / "demo_male_ppg_tone.wav"
     ppg_metadata = session_dir / "ppg_tone" / "demo_male_ppg_tone.json"
-    naturalize_file(denoised_path, phone_output, ppg_output, ppg_metadata, strength=0.4)
+    naturalize_file(denoised_path, clarity_output, ppg_output, ppg_metadata, strength=0.4)
 
     results.extend(
         [
@@ -289,11 +289,11 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
                 ),
             },
             {
-                "label": "Metric+phone optimized male",
-                "method": "metric_phone",
+                "label": "Metric+clarity optimized male",
+                "method": "metric_clarity",
                 "target": target_name,
-                "audio_url": build_public_url(session_dir.name, phone_output, config),
-                "audio_path": str(phone_output),
+                "audio_url": build_public_url(session_dir.name, clarity_output, config),
+                "audio_path": str(clarity_output),
                 "selection": {
                     "target": target_name,
                     "standard_similarity_score": selected_score.standard_similarity_score,
@@ -304,7 +304,7 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
                 "profile": profile_payload(
                     target_name,
                     target_reference,
-                    "humanize_candidate + privacy_target_optimizer + phone_clean",
+                    "humanize_candidate + privacy_target_optimizer + clarity_guard",
                     selection.target_pool_size,
                     target_pool_name,
                 ),
@@ -326,7 +326,7 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
                 "profile": profile_payload(
                     target_name,
                     target_reference,
-                    "humanize_candidate + privacy_target_optimizer + phone_clean + ppg_tone_naturalizer",
+                    "humanize_candidate + privacy_target_optimizer + clarity_guard + ppg_tone_naturalizer",
                     selection.target_pool_size,
                     target_pool_name,
                 ),
@@ -363,7 +363,7 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
         "notes": [
             "This is a record-then-process demo, not low-latency streaming.",
             "The UI evaluates a male target pool and selects the candidate with the lowest speaker-embedding similarity while penalizing over-aggressive prosody changes.",
-            "Each recording runs three male-target methods from the selected candidate: FreeVC optimized baseline, Metric+phone, and PPG-tone.",
+            "Each recording runs three male-target methods from the selected candidate: FreeVC optimized baseline, Metric+clarity, and PPG-tone.",
             "The standard similarity score follows standard.docx: score=(cosine+1)/2*100; lower is better for anonymization.",
         ],
     }
@@ -768,7 +768,7 @@ INDEX_HTML = """
     <header>
       <div>
         <h1>Speech Anonymization Recorder</h1>
-        <p>录音后使用男声目标池全池搜索，生成 FreeVC baseline、Metric+phone 和 PPG-tone 三种匿名化版本。</p>
+        <p>录音后使用男声目标池全池搜索，生成 FreeVC baseline、Metric+clarity 和 PPG-tone 三种匿名化版本。</p>
       </div>
       <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready</span></div>
     </header>
@@ -943,6 +943,7 @@ INDEX_HTML = """
       const descriptions = {
         freevc_baseline: "FreeVC 直接声纹转换基线",
         metric_phone: "指标增强的电话信道版本",
+        metric_clarity: "保真增强的清晰通道版本",
         ppg_tone: "中文声调自然化版本",
       };
       return descriptions[method] || "匿名化版本";
@@ -992,13 +993,13 @@ INDEX_HTML = """
           <h3>#${Number(row.rank)} ${escapeHtml(row.target)}</h3>
           <audio controls src="${escapeHtml(row.audio_url)}"></audio>
           <p>${row.used_by_default ? "当前自动使用的 base target" : "候选 base target"}</p>
-          <p>Balance ${formatNumber(row.balance_score)} = 0.60 privacy ${formatNumber(row.privacy_score)} + 0.40 fidelity ${formatNumber(row.fidelity_score)}</p>
+          <p>Balance ${formatNumber(row.balance_score)} = 0.50 privacy ${formatNumber(row.privacy_score)} + 0.50 fidelity ${formatNumber(row.fidelity_score)}</p>
           <p>Standard ${formatNumber(row.standard_similarity_score)} / 100, naturalness ${formatNumber(row.naturalness_proxy)}, duration ${formatNumber(row.duration_ratio)}</p>
           <div class="path">${escapeHtml(row.audio_path)}</div>
         </div>
       `).join("");
       return `
-        <div class="notice">三种方法共享 #1 base target；后面的 Metric+phone 和 PPG-tone 是在该底座音频上继续后处理。下面展示系统候选排序前 3 个音色，Balance 是额外的隐私/保真平衡解释分：${escapeHtml(formula)}</div>
+        <div class="notice">三种方法共享 #1 base target；后面的 Metric+clarity 和 PPG-tone 是在该底座音频上继续后处理。下面展示系统候选排序前 3 个音色，Balance 是额外的隐私/保真平衡解释分：${escapeHtml(formula)}</div>
         <div class="grid">${cards}</div>
       `;
     }

@@ -27,6 +27,17 @@ class AttackProfile:
 
 ATTACK_PROFILES = (
     AttackProfile(
+        name="clarity_guard",
+        description="Wideband clarity-preserving channel for live demo; keeps consonants and avoids swallowed words.",
+        filter_parts=(
+            "highpass=f=85",
+            "lowpass=f=6200",
+            "equalizer=f=1200:t=q:w=1.0:g=-1.0",
+            "equalizer=f=3600:t=q:w=0.9:g=1.4",
+            "acompressor=threshold=0.060:ratio=1.7:attack=10:release=110",
+        ),
+    ),
+    AttackProfile(
         name="gentle_channel",
         description="Light channel coloration with a small pitch move; intended to keep the voice clean and human.",
         pitch_semitones=0.8,

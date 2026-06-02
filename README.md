@@ -14,7 +14,7 @@ codex/ppg-chinese-tone-naturalness
 
 - 基于 FreeVC 的语音匿名化主流程
 - 男声目标的浏览器录音 Demo UI
-- `FreeVC baseline`、`Metric+phone`、`PPG-tone` 三种方法对比
+- `FreeVC baseline`、`Metric+clarity`、`PPG-tone` 三种方法对比
 - 本次网页录音的即时评估
 - 固定测试集的报告级评估图表
 - PPG-inspired 中文声调自然化实验与调参记录
@@ -32,10 +32,10 @@ codex/ppg-chinese-tone-naturalness
 | 方法 | 含义 | 适合展示什么 |
 | --- | --- | --- |
 | `FreeVC baseline male` | 直接用 FreeVC 做男声目标转换 | 基础音色匿名能力 |
-| `Metric+phone male` | FreeVC 候选筛选 + 干净电话信道后处理 | 更强的声纹隐藏，但可能损失可懂度 |
-| `PPG-tone male` | 在 Metric+phone 基础上加入 PPG-inspired 中文声调自然化 | 中文音调自然度与内容保留折中 |
+| `Metric+clarity male` | FreeVC 候选筛选 + 清晰度保护后处理 | 在匿名化和真人清晰度之间折中，减少吞字 |
+| `PPG-tone male` | 在 Metric+clarity 基础上加入 PPG-inspired 中文声调自然化 | 中文音调自然度与内容保留折中 |
 
-`Metric+phone` 可以理解为 FreeVC 的进阶增强版：先基于指标挑选匿名效果更好的 FreeVC 候选，再叠加 `phone_clean` 通话信道式后处理。
+`Metric+clarity` 可以理解为 FreeVC 的进阶增强版：先基于指标挑选匿名效果更好的 FreeVC 候选，再叠加 `clarity_guard` 宽频、轻压缩的清晰度保护后处理。相比原来的 `Metric+phone` 隐私优先版本，它更重视内容可懂度和真人听感。
 
 `PPG-tone` 是本分支的创新点：它不是完整神经 PPG 模型，而是轻量的 content bottleneck + Mandarin tone contour naturalization，用于让中文匿名语音的声调轮廓更自然。
 
@@ -92,7 +92,7 @@ http://127.0.0.1:7862
 页面会自动使用系统排名第 1 的 shared base target，同时展示 Top 3 候选音色供试听和报告分析。Top 3 会显示下面的隐私/保真平衡分：
 
 ```text
-Balance = 0.60 * Privacy + 0.40 * Fidelity
+Balance = 0.50 * Privacy + 0.50 * Fidelity
 Privacy = clamp((70 - standard_score) / 20)
 Fidelity = 0.60 * naturalness + 0.25 * duration_match + 0.15 * processing_simplicity
 ```
@@ -141,7 +141,7 @@ report_evaluation_male/identity_privacy_index_bar.png
 - 原始语音 ASV EER 为 `0.000`，说明可被稳定识别回原说话人。
 - 男声增强方法的 ASV EER 可达 `0.583`。
 - `PPG-tone male` 的 source-speaker similarity 约为 `0.060`，相对原始 source similarity `0.716` 下降约 `91.5%`。
-- 在 EER 都为 `0.583` 的同档位里，细排顺序为 `PPG-tone male`、`Metric+phone male`、`Raw metric male`。
+- 在 EER 都为 `0.583` 的同档位里，旧固定 benchmark 的细排顺序为 `PPG-tone male`、`Metric+phone male`、`Raw metric male`。当前 Web UI 为减少吞字，已把网页主展示通道改为 `Metric+clarity`。
 
 ## PPG-tone 调参
 
@@ -161,7 +161,7 @@ ppg_tone_tuning_report/figures/
 
 调参结论：
 
-- `balanced_phone_clean_male + strength=0.4` 仍是隐私优先默认。
+- `balanced_phone_clean_male + strength=0.4` 是固定调参实验里的隐私优先默认；当前 Web UI 使用 `clarity_guard` 作为更偏保真的展示通道。
 - `strength=1.0/1.3/1.6` 主要改善 tone/naturalness proxy，但没有稳定提高 ASV/WER。
 - 因此报告中可把 `strength=1.0` 作为自然度 ablation，不替换主结果。
 
@@ -174,7 +174,7 @@ ppg_tone_tuning_report/figures/
 | `privacy_target_optimizer.py` | 在男声池中按隐私和自然度联合选择最佳候选 |
 | `run_privacy_optimized_recording.py` | 对单个本地录音复现 Web UI 优化流程 |
 | `vc_candidate_builder.py` | FreeVC 候选生成 |
-| `build_metric_attack_variants.py` | Metric+phone 等后处理候选 |
+| `build_metric_attack_variants.py` | Metric+clarity / Metric+phone 等后处理候选 |
 | `ppg_tone_naturalizer.py` | PPG-inspired 中文声调自然化 |
 | `run_ppg_tone_experiment.py` | PPG-tone 批量实验 |
 | `evaluate_voiceprivacy.py` | 固定测试集 VoicePrivacy 风格评估 |
