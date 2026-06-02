@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-targets",
         type=int,
-        default=5,
+        default=9,
         help="Maximum target references to evaluate with FreeVC for each recording.",
     )
     parser.add_argument("--host", default="127.0.0.1", help="Host for the local Flask server.")
@@ -712,14 +712,15 @@ INDEX_HTML = """
     <header>
       <div>
         <h1>Speech Anonymization Recorder</h1>
-        <p>录音后生成男声目标下的 FreeVC baseline、Metric+phone 和 PPG-tone 三种匿名化版本。</p>
+        <p>录音后使用男声目标池全池搜索，生成 FreeVC baseline、Metric+phone 和 PPG-tone 三种匿名化版本。</p>
       </div>
       <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready</span></div>
     </header>
 
     <section class="panel">
       <h2>录音</h2>
-      <p>建议录 3-10 秒。首次点击时浏览器会请求麦克风权限。</p>
+      <p>建议录 3-10 秒。当前默认会评估 9 个男声参考，处理通常需要约 1-2 分钟。</p>
+      <div id="configSummary" class="notice">正在读取目标池配置...</div>
       <div class="controls">
         <button class="primary" id="startBtn">开始录音</button>
         <button class="danger" id="stopBtn" disabled>结束录音</button>
@@ -763,6 +764,7 @@ INDEX_HTML = """
     const evalBtn = document.getElementById("evalBtn");
     const evalStatus = document.getElementById("evalStatus");
     const evaluation = document.getElementById("evaluation");
+    const configSummary = document.getElementById("configSummary");
 
     let mediaRecorder = null;
     let chunks = [];
@@ -775,6 +777,18 @@ INDEX_HTML = """
 
     function showError(message) {
       errorBox.textContent = message || "";
+    }
+
+    async function loadConfigSummary() {
+      try {
+        const response = await fetch("/api/config");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || JSON.stringify(payload));
+        const mode = Number(payload.max_targets) >= Number(payload.target_pool_size) ? "全池搜索" : "预筛选搜索";
+        configSummary.textContent = `当前使用 ${payload.target_pool_size} 个男声参考，本次最多评估 ${payload.max_targets} 个目标（${mode}）。标准相似度按 score=(cosine+1)/2*100 计算，越低越匿名。`;
+      } catch (error) {
+        configSummary.textContent = "目标池配置读取失败：" + error.message;
+      }
     }
 
     startBtn.addEventListener("click", async () => {
@@ -822,7 +836,7 @@ INDEX_HTML = """
       summary.innerHTML = "";
       processBtn.disabled = true;
       startBtn.disabled = true;
-      setStatus("Processing");
+      setStatus("Processing target pool");
 
       const formData = new FormData();
       const ext = recordedBlob.type.includes("wav") ? "wav" : "webm";
@@ -843,6 +857,8 @@ INDEX_HTML = """
         startBtn.disabled = false;
       }
     });
+
+    loadConfigSummary();
 
     evalBtn.addEventListener("click", async () => {
       await loadEvaluation(true);

@@ -66,13 +66,13 @@ EXTERNAL_MALE_TARGET_POOL_RESULTS.md
 启动：
 
 ```bash
-python recording_demo_ui.py --port 7862 --max-targets 5
+python recording_demo_ui.py --port 7862
 ```
 
-如果要做报告级“全池搜索”，可以提高为：
+当前默认就是 9 个男声参考的全池搜索。如果临时想加快处理，可以降低为：
 
 ```bash
-python recording_demo_ui.py --port 7862 --max-targets 9
+python recording_demo_ui.py --port 7862 --max-targets 5
 ```
 
 打开：
