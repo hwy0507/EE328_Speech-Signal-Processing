@@ -5,7 +5,7 @@ import json
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +28,6 @@ from ppg_tone_naturalizer import naturalize_file
 from privacy_target_optimizer import (
     load_target_references,
     optimize_privacy_target,
-    safe_name as safe_target_name,
     standard_similarity_from_cosine,
 )
 from vc_candidate_builder import DEFAULT_VC_PYTHON
@@ -119,104 +118,6 @@ def clamp01(value: float) -> float:
     return min(max(value, 0.0), 1.0)
 
 
-def candidate_balance_components(score: Any) -> dict[str, float]:
-    """Score a target candidate by privacy first, with a naturalness guard."""
-    privacy_score = clamp01((70.0 - float(score.standard_similarity_score)) / 20.0)
-    duration_match = clamp01(1.0 - abs(float(score.duration_ratio) - 1.0) / 0.18)
-    processing_simplicity = clamp01(1.0 - float(score.transform_penalty) / 0.04)
-    fidelity_score = clamp01(
-        0.60 * float(score.naturalness_proxy)
-        + 0.25 * duration_match
-        + 0.15 * processing_simplicity
-    )
-    balance_score = clamp01(0.60 * privacy_score + 0.40 * fidelity_score)
-    return {
-        "privacy_score": privacy_score,
-        "fidelity_score": fidelity_score,
-        "balance_score": balance_score,
-        "duration_match": duration_match,
-        "processing_simplicity": processing_simplicity,
-    }
-
-
-def build_candidate_choices(selection: Any, session_dir: Path, config: DemoConfig, limit: int = 3) -> list[dict[str, Any]]:
-    ranked = sorted(
-        selection.candidates,
-        key=lambda score: (
-            candidate_balance_components(score)["balance_score"],
-            candidate_balance_components(score)["privacy_score"],
-            candidate_balance_components(score)["fidelity_score"],
-        ),
-        reverse=True,
-    )
-
-    choices: list[dict[str, Any]] = []
-    seen_targets: set[str] = set()
-    for score in ranked:
-        if score.target_name in seen_targets:
-            continue
-        seen_targets.add(score.target_name)
-        components = candidate_balance_components(score)
-        target = f"male:{score.target_name}/{score.variant_name}"
-        output_path = Path(score.output_path).expanduser().resolve()
-        choices.append(
-            {
-                "rank": len(choices) + 1,
-                "target": target,
-                "target_name": score.target_name,
-                "variant_name": score.variant_name,
-                "target_reference": score.target_reference,
-                "audio_path": str(output_path),
-                "audio_url": build_public_url(session_dir.name, output_path, config),
-                "standard_similarity_score": score.standard_similarity_score,
-                "naturalness_proxy": score.naturalness_proxy,
-                "selection_score": score.selection_score,
-                "privacy_score": components["privacy_score"],
-                "fidelity_score": components["fidelity_score"],
-                "balance_score": components["balance_score"],
-                "duration_ratio": score.duration_ratio,
-                "duration_match": components["duration_match"],
-                "processing_simplicity": components["processing_simplicity"],
-                "output_tag": f"rank{len(choices) + 1:02d}_{safe_target_name(score.target_name)}_{safe_target_name(score.variant_name)}",
-            }
-        )
-        if len(choices) >= limit:
-            break
-
-    if len(choices) < limit:
-        chosen_paths = {choice["audio_path"] for choice in choices}
-        for score in ranked:
-            output_path = str(Path(score.output_path).expanduser().resolve())
-            if output_path in chosen_paths:
-                continue
-            components = candidate_balance_components(score)
-            choices.append(
-                {
-                    "rank": len(choices) + 1,
-                    "target": f"male:{score.target_name}/{score.variant_name}",
-                    "target_name": score.target_name,
-                    "variant_name": score.variant_name,
-                    "target_reference": score.target_reference,
-                    "audio_path": output_path,
-                    "audio_url": build_public_url(session_dir.name, Path(output_path), config),
-                    "standard_similarity_score": score.standard_similarity_score,
-                    "naturalness_proxy": score.naturalness_proxy,
-                    "selection_score": score.selection_score,
-                    "privacy_score": components["privacy_score"],
-                    "fidelity_score": components["fidelity_score"],
-                    "balance_score": components["balance_score"],
-                    "duration_ratio": score.duration_ratio,
-                    "duration_match": components["duration_match"],
-                    "processing_simplicity": components["processing_simplicity"],
-                    "output_tag": f"rank{len(choices) + 1:02d}_{safe_target_name(score.target_name)}_{safe_target_name(score.variant_name)}",
-                }
-            )
-            chosen_paths.add(output_path)
-            if len(choices) >= limit:
-                break
-    return choices
-
-
 def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]], session_dir: Path) -> dict[str, Any]:
     from faster_whisper import WhisperModel
 
@@ -286,121 +187,138 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
     return payload
 
 
-BALANCE_FORMULA = (
-    "Balance = 0.60*Privacy + 0.40*Fidelity; "
-    "Privacy = clamp((70 - standard_score)/20); "
-    "Fidelity = 0.60*naturalness + 0.25*duration_match + 0.15*processing_simplicity."
-)
-
-
-def build_results_for_choice(
-    denoised_path: Path,
-    choice: dict[str, Any],
-    session_dir: Path,
-    config: DemoConfig,
-    *,
-    target_pool_size: int,
-    evaluated_target_count: int,
-    target_pool_name: str,
-) -> list[dict[str, Any]]:
+def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -> dict[str, Any]:
+    preprocess = preprocess_file(input_path, session_dir / "preprocess", denoise_preset="standard")
+    denoised_path = preprocess.denoised_wav
     profile = phone_clean_profile()
-    raw_output = Path(choice["audio_path"]).expanduser().resolve()
-    target_name = choice["target"]
-    target_reference = Path(choice["target_reference"]).expanduser().resolve()
-    output_root = session_dir / "selected_methods" / choice["output_tag"]
 
-    phone_output = output_root / "demo_male_metric_phone.wav"
+    results: list[dict[str, Any]] = []
+    target_references = load_target_references(config.target_pool_config, fallback_paths=[FALLBACK_MALE_TARGET])
+    selection = optimize_privacy_target(
+        denoised_path,
+        target_references,
+        session_dir / "target_optimization",
+        max_targets=config.max_targets,
+        vc_python=config.vc_python,
+    )
+    target_name = f"male:{selection.selected_target.name}/{selection.selected_variant}"
+    target_reference = selection.selected_target.path
+    target_pool_name = "external_male_privacy_pool"
+    raw_output = selection.selected_output
+    selected_score = selection.candidates[0]
+
+    phone_output = session_dir / "metric_phone" / "demo_male_metric_phone.wav"
     apply_attack_profile(raw_output, phone_output, profile)
-    ppg_output = output_root / "demo_male_ppg_tone.wav"
-    ppg_metadata = output_root / "demo_male_ppg_tone.json"
+    ppg_output = session_dir / "ppg_tone" / "demo_male_ppg_tone.wav"
+    ppg_metadata = session_dir / "ppg_tone" / "demo_male_ppg_tone.json"
     naturalize_file(denoised_path, phone_output, ppg_output, ppg_metadata, strength=0.4)
 
-    selection_payload = {
-        "rank": choice["rank"],
-        "target": target_name,
-        "standard_similarity_score": choice["standard_similarity_score"],
-        "naturalness_proxy": choice["naturalness_proxy"],
-        "privacy_score": choice["privacy_score"],
-        "fidelity_score": choice["fidelity_score"],
-        "balance_score": choice["balance_score"],
-        "evaluated_target_count": evaluated_target_count,
-        "target_pool_size": target_pool_size,
-    }
+    results.extend(
+        [
+            {
+                "label": "FreeVC optimized male",
+                "method": "freevc_baseline",
+                "target": target_name,
+                "audio_url": build_public_url(session_dir.name, raw_output, config),
+                "audio_path": str(raw_output),
+                "selection": {
+                    "target": target_name,
+                    "standard_similarity_score": selected_score.standard_similarity_score,
+                    "naturalness_proxy": selected_score.naturalness_proxy,
+                    "evaluated_target_count": selection.evaluated_target_count,
+                    "target_pool_size": selection.target_pool_size,
+                },
+                "profile": profile_payload(
+                    target_name,
+                    target_reference,
+                    "humanize_candidate + privacy_target_optimizer",
+                    selection.target_pool_size,
+                    target_pool_name,
+                ),
+            },
+            {
+                "label": "Metric+phone optimized male",
+                "method": "metric_phone",
+                "target": target_name,
+                "audio_url": build_public_url(session_dir.name, phone_output, config),
+                "audio_path": str(phone_output),
+                "selection": {
+                    "target": target_name,
+                    "standard_similarity_score": selected_score.standard_similarity_score,
+                    "naturalness_proxy": selected_score.naturalness_proxy,
+                    "evaluated_target_count": selection.evaluated_target_count,
+                    "target_pool_size": selection.target_pool_size,
+                },
+                "profile": profile_payload(
+                    target_name,
+                    target_reference,
+                    "humanize_candidate + privacy_target_optimizer + phone_clean",
+                    selection.target_pool_size,
+                    target_pool_name,
+                ),
+            },
+            {
+                "label": "PPG-tone optimized male",
+                "method": "ppg_tone",
+                "target": target_name,
+                "audio_url": build_public_url(session_dir.name, ppg_output, config),
+                "audio_path": str(ppg_output),
+                "metadata_path": str(ppg_metadata),
+                "selection": {
+                    "target": target_name,
+                    "standard_similarity_score": selected_score.standard_similarity_score,
+                    "naturalness_proxy": selected_score.naturalness_proxy,
+                    "evaluated_target_count": selection.evaluated_target_count,
+                    "target_pool_size": selection.target_pool_size,
+                },
+                "profile": profile_payload(
+                    target_name,
+                    target_reference,
+                    "humanize_candidate + privacy_target_optimizer + phone_clean + ppg_tone_naturalizer",
+                    selection.target_pool_size,
+                    target_pool_name,
+                ),
+            },
+        ]
+    )
+    (session_dir / "selected_target_summary.json").write_text(
+        json.dumps(
+            {
+                "selected_target": target_name,
+                "selected_reference": str(target_reference),
+                "selected_raw_output": str(raw_output),
+                "selected_standard_similarity_score": selected_score.standard_similarity_score,
+                "selected_naturalness_proxy": selected_score.naturalness_proxy,
+                "target_pool_size": selection.target_pool_size,
+                "evaluated_target_count": selection.evaluated_target_count,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
-    return [
-        {
-            "label": "FreeVC optimized male",
-            "method": "freevc_baseline",
-            "target": target_name,
-            "audio_url": build_public_url(session_dir.name, raw_output, config),
-            "audio_path": str(raw_output),
-            "selection": selection_payload,
-            "profile": profile_payload(
-                target_name,
-                target_reference,
-                "humanize_candidate + privacy_target_optimizer",
-                target_pool_size,
-                target_pool_name,
-            ),
-        },
-        {
-            "label": "Metric+phone optimized male",
-            "method": "metric_phone",
-            "target": target_name,
-            "audio_url": build_public_url(session_dir.name, phone_output, config),
-            "audio_path": str(phone_output),
-            "selection": selection_payload,
-            "profile": profile_payload(
-                target_name,
-                target_reference,
-                "humanize_candidate + privacy_target_optimizer + phone_clean",
-                target_pool_size,
-                target_pool_name,
-            ),
-        },
-        {
-            "label": "PPG-tone optimized male",
-            "method": "ppg_tone",
-            "target": target_name,
-            "audio_url": build_public_url(session_dir.name, ppg_output, config),
-            "audio_path": str(ppg_output),
-            "metadata_path": str(ppg_metadata),
-            "selection": selection_payload,
-            "profile": profile_payload(
-                target_name,
-                target_reference,
-                "humanize_candidate + privacy_target_optimizer + phone_clean + ppg_tone_naturalizer",
-                target_pool_size,
-                target_pool_name,
-            ),
-        },
-    ]
-
-
-def build_demo_summary(
-    *,
-    session_dir: Path,
-    config: DemoConfig,
-    input_path: Path,
-    denoised_path: Path,
-    results: list[dict[str, Any]],
-    candidate_choices: list[dict[str, Any]],
-    selected_choice: dict[str, Any],
-) -> dict[str, Any]:
     summary = {
         "session_id": session_dir.name,
         "input_path": str(input_path),
         "denoised_path": str(denoised_path),
         "denoised_url": build_public_url(session_dir.name, denoised_path, config),
         "results": results,
-        "candidate_choices": candidate_choices,
-        "selected_choice_rank": selected_choice["rank"],
-        "selected_choice": selected_choice,
-        "balance_formula": BALANCE_FORMULA,
+        "selection_candidates": [
+            {
+                "rank": index + 1,
+                "target": f"male:{score.target_name}/{score.variant_name}",
+                "standard_similarity_score": score.standard_similarity_score,
+                "naturalness_proxy": score.naturalness_proxy,
+                "selection_score": score.selection_score,
+                "duration_ratio": score.duration_ratio,
+            }
+            for index, score in enumerate(selection.candidates[:8])
+        ],
         "notes": [
             "This is a record-then-process demo, not low-latency streaming.",
-            "The UI evaluates a male target pool and shows the top balanced candidates for manual selection.",
-            "The selected base candidate is reused by FreeVC optimized baseline, Metric+phone, and PPG-tone.",
+            "The UI evaluates a male target pool and selects the candidate with the lowest speaker-embedding similarity while penalizing over-aggressive prosody changes.",
+            "Each recording runs three male-target methods from the selected candidate: FreeVC optimized baseline, Metric+phone, and PPG-tone.",
             "The standard similarity score follows standard.docx: score=(cosine+1)/2*100; lower is better for anonymization.",
         ],
     }
@@ -414,87 +332,6 @@ def build_demo_summary(
         }
     (session_dir / "demo_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     return summary
-
-
-def load_session_state(session_dir: Path) -> dict[str, Any]:
-    state_path = session_dir / "candidate_selection_state.json"
-    if not state_path.exists():
-        raise FileNotFoundError("This session does not contain selectable target candidates.")
-    return json.loads(state_path.read_text(encoding="utf-8"))
-
-
-def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -> dict[str, Any]:
-    preprocess = preprocess_file(input_path, session_dir / "preprocess", denoise_preset="standard")
-    denoised_path = preprocess.denoised_wav
-
-    target_references = load_target_references(config.target_pool_config, fallback_paths=[FALLBACK_MALE_TARGET])
-    selection = optimize_privacy_target(
-        denoised_path,
-        target_references,
-        session_dir / "target_optimization",
-        max_targets=config.max_targets,
-        vc_python=config.vc_python,
-    )
-    target_pool_name = "external_male_privacy_pool"
-    candidate_choices = build_candidate_choices(selection, session_dir, config)
-    if not candidate_choices:
-        raise RuntimeError("No selectable target candidates were generated.")
-    selected_choice = candidate_choices[0]
-    results = build_results_for_choice(
-        denoised_path,
-        selected_choice,
-        session_dir,
-        config,
-        target_pool_size=selection.target_pool_size,
-        evaluated_target_count=selection.evaluated_target_count,
-        target_pool_name=target_pool_name,
-    )
-    (session_dir / "selected_target_summary.json").write_text(
-        json.dumps(
-            {
-                "selected_target": selected_choice["target"],
-                "selected_reference": selected_choice["target_reference"],
-                "selected_raw_output": selected_choice["audio_path"],
-                "selected_standard_similarity_score": selected_choice["standard_similarity_score"],
-                "selected_naturalness_proxy": selected_choice["naturalness_proxy"],
-                "selected_privacy_score": selected_choice["privacy_score"],
-                "selected_fidelity_score": selected_choice["fidelity_score"],
-                "selected_balance_score": selected_choice["balance_score"],
-                "target_pool_size": selection.target_pool_size,
-                "evaluated_target_count": selection.evaluated_target_count,
-                "candidate_choices": candidate_choices,
-                "balance_formula": BALANCE_FORMULA,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    (session_dir / "candidate_selection_state.json").write_text(
-        json.dumps(
-            {
-                "input_path": str(input_path),
-                "denoised_path": str(denoised_path),
-                "target_pool_size": selection.target_pool_size,
-                "evaluated_target_count": selection.evaluated_target_count,
-                "target_pool_name": target_pool_name,
-                "candidate_choices": candidate_choices,
-                "balance_formula": BALANCE_FORMULA,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    return build_demo_summary(
-        session_dir=session_dir,
-        config=config,
-        input_path=input_path,
-        denoised_path=denoised_path,
-        results=results,
-        candidate_choices=candidate_choices,
-        selected_choice=selected_choice,
-    )
 
 
 def run_report_evaluation() -> None:
@@ -582,59 +419,6 @@ def create_app(config: DemoConfig) -> Flask:
                 "input_path": str(input_path),
             }
             (session_dir / "error.json").write_text(json.dumps(error_payload, ensure_ascii=False, indent=2), encoding="utf-8")
-            return jsonify(error_payload), 500
-
-        return jsonify(summary)
-
-    @app.post("/api/select-candidate")
-    def select_candidate():
-        payload = request.get_json(silent=True) or {}
-        session_id = str(payload.get("session_id", "")).strip()
-        try:
-            rank = int(payload.get("rank", 0))
-        except (TypeError, ValueError):
-            return jsonify({"error": "Candidate rank must be an integer."}), 400
-
-        base = config.work_root.resolve()
-        session_dir = (base / session_id).resolve()
-        if not session_id or not session_dir.is_dir() or base not in session_dir.parents:
-            return jsonify({"error": "Invalid session."}), 400
-
-        try:
-            state = load_session_state(session_dir)
-            choices = state.get("candidate_choices", [])
-            selected_choice = next(choice for choice in choices if int(choice["rank"]) == rank)
-            denoised_path = Path(state["denoised_path"]).expanduser().resolve()
-            input_path = Path(state["input_path"]).expanduser().resolve()
-            results = build_results_for_choice(
-                denoised_path,
-                selected_choice,
-                session_dir,
-                config,
-                target_pool_size=int(state["target_pool_size"]),
-                evaluated_target_count=int(state["evaluated_target_count"]),
-                target_pool_name=str(state["target_pool_name"]),
-            )
-            summary = build_demo_summary(
-                session_dir=session_dir,
-                config=config,
-                input_path=input_path,
-                denoised_path=denoised_path,
-                results=results,
-                candidate_choices=choices,
-                selected_choice=selected_choice,
-            )
-        except StopIteration:
-            return jsonify({"error": "Candidate rank not found."}), 404
-        except Exception as exc:  # noqa: BLE001 - surface a clear UI error for the local demo.
-            error_payload = {
-                "session_id": session_id,
-                "error": str(exc),
-            }
-            (session_dir / "select_candidate_error.json").write_text(
-                json.dumps(error_payload, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
             return jsonify(error_payload), 500
 
         return jsonify(summary)
@@ -996,7 +780,6 @@ INDEX_HTML = """
     let mediaRecorder = null;
     let chunks = [];
     let recordedBlob = null;
-    let latestPayload = null;
 
     function setStatus(text, recording = false) {
       statusText.textContent = text;
@@ -1129,7 +912,6 @@ INDEX_HTML = """
     }
 
     function renderResults(payload) {
-      latestPayload = payload;
       results.innerHTML = "";
       for (const item of payload.results || []) {
         const card = document.createElement("div");
@@ -1139,81 +921,54 @@ INDEX_HTML = """
           <h3>${escapeHtml(item.label)}</h3>
           <p>${escapeHtml(methodDescription(item.method))}</p>
           <audio controls src="${escapeHtml(item.audio_url)}"></audio>
-          <p>Chosen base target: ${escapeHtml(selection.target || item.target || "-")}</p>
-          <p>Balance ${formatNumber(selection.balance_score)}, standard ${formatNumber(selection.standard_similarity_score)} / 100, fidelity ${formatNumber(selection.fidelity_score)}</p>
+          <p>Shared base target: ${escapeHtml(selection.target || item.target || "-")}</p>
+          <p>Base pre-score: ${formatNumber(selection.standard_similarity_score)} / 100, naturalness proxy ${formatNumber(selection.naturalness_proxy)}</p>
           <div class="path">${escapeHtml(item.audio_path)}</div>
         `;
         results.appendChild(card);
       }
       summary.innerHTML = `
         <h3>Session</h3>
-        ${renderCandidateChoices(payload)}
+        ${renderTargetSelection(payload.selection_candidates || [])}
         ${renderRecordingEvaluation(payload.recording_evaluation)}
         <pre>${escapeHtml(JSON.stringify({
           session_id: payload.session_id,
           denoised_path: payload.denoised_path,
-          selected_choice: payload.selected_choice,
           notes: payload.notes
         }, null, 2))}</pre>
       `;
-      attachCandidateHandlers();
     }
 
-    function renderCandidateChoices(payload) {
-      const candidates = payload.candidate_choices || [];
+    function renderTargetSelection(candidates) {
       if (!candidates.length) return "";
-      const selectedRank = Number(payload.selected_choice_rank || 0);
-      const cards = candidates.map(row => `
-        <div class="result">
-          <h3>#${Number(row.rank)} ${escapeHtml(row.target)}</h3>
-          <audio controls src="${escapeHtml(row.audio_url)}"></audio>
-          <p>Balance ${formatNumber(row.balance_score)} = 0.60 privacy ${formatNumber(row.privacy_score)} + 0.40 fidelity ${formatNumber(row.fidelity_score)}</p>
-          <p>Standard ${formatNumber(row.standard_similarity_score)} / 100, naturalness ${formatNumber(row.naturalness_proxy)}, duration ${formatNumber(row.duration_ratio)}</p>
-          <button class="${Number(row.rank) === selectedRank ? "secondary" : "primary"}" data-select-candidate="${Number(row.rank)}" ${Number(row.rank) === selectedRank ? "disabled" : ""}>
-            ${Number(row.rank) === selectedRank ? "当前使用" : "使用这个音色"}
-          </button>
-        </div>
+      const rows = candidates.map(row => `
+        <tr>
+          <td>${Number(row.rank)}</td>
+          <td>${escapeHtml(row.target)}</td>
+          <td>${formatNumber(row.standard_similarity_score)}</td>
+          <td>${formatNumber(row.naturalness_proxy)}</td>
+          <td>${formatNumber(row.selection_score)}</td>
+          <td>${formatNumber(row.duration_ratio)}</td>
+        </tr>
       `).join("");
       return `
-        <div class="notice">Top 3 候选音色按综合分排序。${escapeHtml(payload.balance_formula || "")}</div>
-        <div class="grid">${cards}</div>
+        <div class="notice">三种方法共享同一个最佳 base target；后面的 Metric+phone 和 PPG-tone 是在该底座音频上继续后处理。下面是本次录音的目标候选排序，selection score 同时考虑低相似度和真人音色约束。</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Candidate</th>
+                <th>Base standard score ↓</th>
+                <th>Naturalness ↑</th>
+                <th>Selection score ↓</th>
+                <th>Duration ratio</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
       `;
-    }
-
-    function attachCandidateHandlers() {
-      summary.querySelectorAll("[data-select-candidate]").forEach(button => {
-        button.addEventListener("click", async () => {
-          if (!latestPayload) return;
-          const rank = Number(button.dataset.selectCandidate);
-          await selectCandidate(rank);
-        });
-      });
-    }
-
-    async function selectCandidate(rank) {
-      if (!latestPayload?.session_id) return;
-      showError("");
-      setStatus("Generating selected target");
-      summary.querySelectorAll("[data-select-candidate]").forEach(button => {
-        button.disabled = true;
-      });
-      try {
-        const response = await fetch("/api/select-candidate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: latestPayload.session_id, rank }),
-        });
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error || JSON.stringify(payload));
-        }
-        renderResults(payload);
-        setStatus("Done");
-      } catch (error) {
-        showError("候选音色生成失败：\\n" + error.message);
-        setStatus("Failed");
-        renderResults(latestPayload);
-      }
     }
 
     function renderRecordingEvaluation(evaluationPayload) {
