@@ -2,10 +2,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 DEFAULT_MODEL = "voice_conversion_models/multilingual/vctk/freevc24"
+DEFAULT_RUNTIME_CACHE = Path("/private/tmp/speech_anon_runtime_cache")
+
+
+def configure_runtime_cache() -> None:
+    """Give librosa/numba/matplotlib writable caches before importing TTS."""
+    DEFAULT_RUNTIME_CACHE.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("NUMBA_CACHE_DIR", str(DEFAULT_RUNTIME_CACHE / "numba"))
+    os.environ.setdefault("LIBROSA_CACHE_DIR", str(DEFAULT_RUNTIME_CACHE / "librosa"))
+    os.environ.setdefault("MPLCONFIGDIR", str(DEFAULT_RUNTIME_CACHE / "matplotlib"))
+    for cache_dir in ("numba", "librosa", "matplotlib"):
+        (DEFAULT_RUNTIME_CACHE / cache_dir).mkdir(parents=True, exist_ok=True)
 
 
 def build_status(source: Path, target: Path, output: Path, *, available: bool, message: str) -> dict:
@@ -47,6 +59,7 @@ def main() -> int:
     output = Path(args.out).expanduser().resolve()
 
     try:
+        configure_runtime_cache()
         from TTS.api import TTS  # type: ignore
     except Exception as exc:
         status = build_status(

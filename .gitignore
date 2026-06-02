@@ -10,3 +10,5 @@ work_metric_attack/
 work_metric_probe/
 work_ppg_tone*/
 work_recording_demo/
+external_voice_targets/
+data_external/

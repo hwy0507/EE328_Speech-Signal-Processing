@@ -30,6 +30,52 @@ DEFAULT_WHISPER_MODEL = (
 )
 DEFAULT_SPEAKER_SAVEDIR_ROOT = Path("/private/tmp/speechbrain_ecapa_eval")
 AUDIO_SUFFIXES = (".wav", ".m4a", ".mp3", ".flac", ".ogg", ".aac")
+TRADITIONAL_TO_SIMPLIFIED = str.maketrans(
+    {
+        "選": "选",
+        "擇": "择",
+        "顏": "颜",
+        "綠": "绿",
+        "聲": "声",
+        "錄": "录",
+        "語": "语",
+        "處": "处",
+        "這": "这",
+        "個": "个",
+        "們": "们",
+        "說": "说",
+        "話": "话",
+        "聽": "听",
+        "為": "为",
+        "會": "会",
+        "來": "来",
+        "對": "对",
+        "時": "时",
+        "間": "间",
+        "問": "问",
+        "題": "题",
+        "實": "实",
+        "驗": "验",
+        "結": "结",
+        "標": "标",
+        "準": "准",
+        "類": "类",
+        "測": "测",
+        "試": "试",
+        "據": "据",
+        "數": "数",
+        "擴": "扩",
+        "優": "优",
+        "隱": "隐",
+        "私": "私",
+        "識": "识",
+        "別": "别",
+        "動": "动",
+        "態": "态",
+        "網": "网",
+        "絡": "络",
+    }
+)
 
 ASV_WORKER = r"""
 from __future__ import annotations
@@ -262,7 +308,7 @@ def compute_eer(target_scores: list[float], nontarget_scores: list[float]) -> di
 
 
 def normalize_transcript(text: str) -> list[str]:
-    normalized = unicodedata.normalize("NFKC", text).lower()
+    normalized = unicodedata.normalize("NFKC", text).lower().translate(TRADITIONAL_TO_SIMPLIFIED)
     return [
         ch
         for ch in normalized

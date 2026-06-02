@@ -18,6 +18,7 @@ codex/ppg-chinese-tone-naturalness
 - 本次网页录音的即时评估
 - 固定测试集的报告级评估图表
 - PPG-inspired 中文声调自然化实验与调参记录
+- 外部公共男声目标池和隐私/自然度联合候选选择
 
 当前主推荐展示方式是：
 
@@ -38,12 +39,40 @@ codex/ppg-chinese-tone-naturalness
 
 `PPG-tone` 是本分支的创新点：它不是完整神经 PPG 模型，而是轻量的 content bottleneck + Mandarin tone contour naturalization，用于让中文匿名语音的声调轮廓更自然。
 
+## 外部男声目标池
+
+为避免匿名效果受单一参考音色限制，当前 Web UI 默认使用：
+
+```text
+vc_target_pool_male_external.json
+```
+
+该目标池包含 6 个 CMU ARCTIC 公共男声参考和 3 个本地 lab 男声参考。音频文件由脚本下载/整理到 `external_voice_targets/male/`，该目录不提交到 Git。
+
+准备或刷新目标池：
+
+```bash
+/opt/anaconda3/envs/speech-anon310/bin/python prepare_external_male_targets.py --speakers bdl rms jmk awb ksp rxr --utterances-per-speaker 5 --target-seconds 9
+```
+
+每次处理录音时，`privacy_target_optimizer.py` 会在目标池中选择声纹相似度低、但语速/音高变化不过度的候选。报告数值见：
+
+```text
+EXTERNAL_MALE_TARGET_POOL_RESULTS.md
+```
+
 ## Web UI 使用
 
 启动：
 
 ```bash
-python recording_demo_ui.py --port 7862
+python recording_demo_ui.py --port 7862 --max-targets 5
+```
+
+如果要做报告级“全池搜索”，可以提高为：
+
+```bash
+python recording_demo_ui.py --port 7862 --max-targets 9
 ```
 
 打开：
@@ -133,6 +162,9 @@ ppg_tone_tuning_report/figures/
 | 文件 | 作用 |
 | --- | --- |
 | `recording_demo_ui.py` | Web 录音、匿名化、即时评估 |
+| `prepare_external_male_targets.py` | 下载/整理 CMU ARCTIC 公共男声目标池 |
+| `privacy_target_optimizer.py` | 在男声池中按隐私和自然度联合选择最佳候选 |
+| `run_privacy_optimized_recording.py` | 对单个本地录音复现 Web UI 优化流程 |
 | `vc_candidate_builder.py` | FreeVC 候选生成 |
 | `build_metric_attack_variants.py` | Metric+phone 等后处理候选 |
 | `ppg_tone_naturalizer.py` | PPG-inspired 中文声调自然化 |
@@ -140,6 +172,7 @@ ppg_tone_tuning_report/figures/
 | `evaluate_voiceprivacy.py` | 固定测试集 VoicePrivacy 风格评估 |
 | `generate_report_evaluation.py` | 报告图表与表格生成 |
 | `VOICEPRIVACY_RESULTS.md` | 指标结果解释 |
+| `EXTERNAL_MALE_TARGET_POOL_RESULTS.md` | 外部男声池和最新低相似度结果 |
 | `PPG_TONE_EXPERIMENT.md` | PPG-tone 实验说明 |
 | `PPG_TONE_TUNING_RESULTS.md` | PPG-tone 调参结论 |
 | `HANDOFF.md` | 给队友/后续 AI 的交接说明 |

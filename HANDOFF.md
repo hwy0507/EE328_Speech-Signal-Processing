@@ -41,6 +41,7 @@ https://github.com/hwy0507/EE328_Speech-Signal-Processing
 - 本次网页录音的即时评估
 - 固定测试集报告图表
 - PPG-tone 参数 sweep
+- 外部公共男声目标池与隐私/自然度联合候选选择
 - GitHub 分支提交和推送
 
 当前推荐展示方式：
@@ -49,6 +50,17 @@ https://github.com/hwy0507/EE328_Speech-Signal-Processing
 2. 自动生成三种男声目标匿名结果。
 3. 网页直接展示本次录音的声纹相似度下降和内容保留指标。
 4. 固定 benchmark 图表只作为报告参考。
+
+最新补充：
+
+- 目标池已扩展为 9 个男声参考：6 个 CMU ARCTIC 公共男声 + 3 个本地 lab 男声。
+- 目标池配置：`vc_target_pool_male_external.json`
+- 准备脚本：`prepare_external_male_targets.py`
+- 选择脚本：`privacy_target_optimizer.py`
+- 单音频复现脚本：`run_privacy_optimized_recording.py`
+- 结果说明：`EXTERNAL_MALE_TARGET_POOL_RESULTS.md`
+
+注意：目标不是把音频扭到最不像，而是在真人音色约束下最小化相似度。现在选择分数会惩罚过大的语速/音高变化、时长偏移和削波。
 
 ## 3. 三种方法怎么理解
 
@@ -140,7 +152,37 @@ recording_evaluation.json
 
 如果某次录音中 FreeVC baseline 排第一，也不矛盾。实时单条样例会受录音内容、麦克风、句长影响；报告中应强调 PPG-tone 的创新点和稳定折中，而不是声称它每条录音都绝对第一。
 
-## 7. 固定 Benchmark 怎么用
+## 7. 外部男声池最新结果
+
+`绿色.m4a` 全池搜索命令：
+
+```bash
+python run_privacy_optimized_recording.py /Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a --max-targets 9
+```
+
+最新 session：
+
+```text
+work_recording_demo/batch_20260603_015207/
+```
+
+关键结果：
+
+| 方法 | Raw cosine ↓ | Standard score ↓ | Similarity drop ↑ | ASR WER ↓ | Content kept ↑ |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FreeVC optimized male | 0.089 | 54.450 | 91.10% | 0.000 | 100.00% |
+| Metric+phone optimized male | 0.081 | 54.026 | 91.95% | 0.222 | 77.78% |
+| PPG-tone optimized male | 0.079 | 53.935 | 92.13% | 0.222 | 77.78% |
+
+解释：
+
+```text
+standard score = (cosine + 1) / 2 * 100
+```
+
+因此 `53.935/100` 对应 raw cosine `0.079`，已经接近 cosine 为 0 的不相关说话人状态。报告里可以把这个作为“扩展男声池 + 联合选择后，匿名化相似度显著下降”的直观证据。
+
+## 8. 固定 Benchmark 怎么用
 
 固定 benchmark 用于课程报告，不代表每次网页录音。
 
@@ -174,7 +216,7 @@ EER 解释：
 固定测试集只有 2 个 target trials 和 12 个 non-target trials，所以 EER 是粗台阶指标。多个方法同为 0.583 不代表完全一样，需要再看 source similarity 和 similarity drop。
 ```
 
-## 8. PPG-tone 调参结论
+## 9. PPG-tone 调参结论
 
 脚本：
 
@@ -197,11 +239,14 @@ ppg_tone_tuning_report/figures/
 - 高 strength 没有稳定提升 ASV/WER，也会略弱化 source similarity reduction。
 - `strength=1.0` 可以作为自然度 ablation，不替换主结果。
 
-## 9. 关键文件
+## 10. 关键文件
 
 | 文件 | 作用 |
 | --- | --- |
 | `recording_demo_ui.py` | Web 录音、匿名化、即时评估 |
+| `prepare_external_male_targets.py` | 下载/整理 CMU ARCTIC 公共男声目标池 |
+| `privacy_target_optimizer.py` | 在男声池中按隐私和自然度联合选择最佳候选 |
+| `run_privacy_optimized_recording.py` | 对单个本地录音复现 Web UI 优化流程 |
 | `vc_candidate_builder.py` | FreeVC 单候选生成 |
 | `build_metric_attack_variants.py` | Metric+phone 后处理候选 |
 | `ppg_tone_naturalizer.py` | PPG-inspired 中文声调自然化 |
@@ -210,9 +255,10 @@ ppg_tone_tuning_report/figures/
 | `generate_report_evaluation.py` | 报告图表生成 |
 | `tune_ppg_tone_parameters.py` | PPG-tone 参数 sweep |
 | `VOICEPRIVACY_RESULTS.md` | 指标解释 |
+| `EXTERNAL_MALE_TARGET_POOL_RESULTS.md` | 外部男声池和最新低相似度结果 |
 | `README.md` | 项目入口说明 |
 
-## 10. 常见误区
+## 11. 常见误区
 
 误区 1：把 ASR WER 越高当作目标。
 
@@ -230,7 +276,7 @@ ppg_tone_tuning_report/figures/
 
 修正：应写成 PPG-inspired lightweight content bottleneck + Mandarin tone contour naturalization。
 
-## 11. 后续建议
+## 12. 后续建议
 
 优先级最高：
 
@@ -245,7 +291,7 @@ ppg_tone_tuning_report/figures/
 - 不要把强噪声或强失真版本作为主结果。
 - 不要用 `max_metric_vowel_mask_reference` 作为最终展示，它容易触发 ASR 幻觉。
 
-## 12. Git 状态
+## 13. Git 状态
 
 当前主线已经推送到：
 

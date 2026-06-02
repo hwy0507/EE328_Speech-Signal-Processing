@@ -25,15 +25,19 @@ from evaluate_voiceprivacy import (
     transcribe_audio,
 )
 from ppg_tone_naturalizer import naturalize_file
-from vc_candidate_builder import DEFAULT_VC_PYTHON, build_one_candidate
+from privacy_target_optimizer import (
+    load_target_references,
+    optimize_privacy_target,
+    standard_similarity_from_cosine,
+)
+from vc_candidate_builder import DEFAULT_VC_PYTHON
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_WORK_ROOT = PROJECT_ROOT / "work_recording_demo"
+DEFAULT_TARGET_POOL_CONFIG = PROJECT_ROOT / "vc_target_pool_male_external.json"
 REPORT_EVALUATION_DIR = PROJECT_ROOT / "report_evaluation_male"
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
-RECOMMENDED_TARGETS = {
-    "male": PROJECT_ROOT.parent / "常规lab/lab9/s6.wav",
-}
+FALLBACK_MALE_TARGET = PROJECT_ROOT.parent / "常规lab/lab9/s6.wav"
 REPORT_FIGURES = (
     ("report_takeaway_dashboard.png", "Project effect summary"),
     ("speaker_identity_ladder.png", "Speaker identity leakage"),
@@ -51,12 +55,25 @@ class DemoConfig:
     vc_python: Path
     host: str
     port: int
+    target_pool_config: Path
+    max_targets: int
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a browser-based record-and-anonymize demo UI.")
     parser.add_argument("--work-root", default=str(DEFAULT_WORK_ROOT), help="Directory for recorded demo artifacts.")
     parser.add_argument("--vc-python", default=str(DEFAULT_VC_PYTHON), help="Python executable for FreeVC inference.")
+    parser.add_argument(
+        "--target-pool-config",
+        default=str(DEFAULT_TARGET_POOL_CONFIG),
+        help="JSON config containing male target references. External targets are skipped until prepared.",
+    )
+    parser.add_argument(
+        "--max-targets",
+        type=int,
+        default=5,
+        help="Maximum target references to evaluate with FreeVC for each recording.",
+    )
     parser.add_argument("--host", default="127.0.0.1", help="Host for the local Flask server.")
     parser.add_argument("--port", type=int, default=7860, help="Port for the local Flask server.")
     return parser.parse_args()
@@ -73,14 +90,20 @@ def phone_clean_profile():
     raise RuntimeError("Missing phone_clean attack profile")
 
 
-def profile_payload(target_name: str, target_reference: Path, postprocess: str) -> dict[str, Any]:
+def profile_payload(
+    target_name: str,
+    target_reference: Path,
+    postprocess: str,
+    target_reference_count: int,
+    target_pool_name: str,
+) -> dict[str, Any]:
     return {
         "backend": "freevc",
         "name": f"freevc_demo_{target_name}",
         "target_reference": str(target_reference),
-        "target_strategy": "single_ref_demo",
-        "target_pool_name": f"demo_{target_name}",
-        "target_reference_count": 1,
+        "target_strategy": "privacy_optimized_single_ref",
+        "target_pool_name": target_pool_name,
+        "target_reference_count": target_reference_count,
         "target_reference_paths": [str(target_reference)],
         "postprocess": postprocess,
     }
@@ -118,6 +141,7 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
     for item, output_path in zip(results, output_paths):
         output_embedding = embeddings[str(output_path)]
         similarity = cosine_score(source_embedding, output_embedding)
+        standard_similarity = standard_similarity_from_cosine(similarity)
         similarity_drop = clamp01(1.0 - similarity)
         hypothesis_text = transcribe_audio(whisper_model, output_path, "zh")
         edits = edit_distance(reference_tokens, normalize_transcript(hypothesis_text))
@@ -129,6 +153,8 @@ def evaluate_recording_session(denoised_path: Path, results: list[dict[str, Any]
                 "label": item["label"],
                 "method": item["method"],
                 "source_similarity": similarity,
+                "standard_similarity": standard_similarity,
+                "standard_similarity_score": standard_similarity * 100.0,
                 "source_similarity_reduction": similarity_drop,
                 "asr_wer": wer,
                 "content_preservation": content_preservation,
@@ -167,63 +193,110 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
     profile = phone_clean_profile()
 
     results: list[dict[str, Any]] = []
-    for target_name, target_reference in RECOMMENDED_TARGETS.items():
-        if not target_reference.exists():
-            raise FileNotFoundError(f"Missing {target_name} target reference: {target_reference}")
+    target_references = load_target_references(config.target_pool_config, fallback_paths=[FALLBACK_MALE_TARGET])
+    selection = optimize_privacy_target(
+        denoised_path,
+        target_references,
+        session_dir / "target_optimization",
+        max_targets=config.max_targets,
+        vc_python=config.vc_python,
+    )
+    target_name = f"male:{selection.selected_target.name}/{selection.selected_variant}"
+    target_reference = selection.selected_target.path
+    target_pool_name = "external_male_privacy_pool"
+    raw_output = selection.selected_output
+    selected_score = selection.candidates[0]
 
-        raw_output = session_dir / "raw_freevc" / f"demo_{target_name}_freevc.wav"
-        raw_status = session_dir / "raw_freevc" / f"demo_{target_name}_freevc.json"
-        vc_result = build_one_candidate(
-            source_path=denoised_path,
-            target_reference=target_reference,
-            output_path=raw_output,
-            status_json=raw_status,
-            python_executable=config.vc_python,
-        )
-        if vc_result is None:
-            raise RuntimeError(
-                f"FreeVC failed for {target_name}. Check {raw_status.parent} and the speech-anon310 environment."
-            )
+    phone_output = session_dir / "metric_phone" / "demo_male_metric_phone.wav"
+    apply_attack_profile(raw_output, phone_output, profile)
+    ppg_output = session_dir / "ppg_tone" / "demo_male_ppg_tone.wav"
+    ppg_metadata = session_dir / "ppg_tone" / "demo_male_ppg_tone.json"
+    naturalize_file(denoised_path, phone_output, ppg_output, ppg_metadata, strength=0.4)
 
-        phone_output = session_dir / "metric_phone" / f"demo_{target_name}_metric_phone.wav"
-        apply_attack_profile(raw_output, phone_output, profile)
-        ppg_output = session_dir / "ppg_tone" / f"demo_{target_name}_ppg_tone.wav"
-        ppg_metadata = session_dir / "ppg_tone" / f"demo_{target_name}_ppg_tone.json"
-        naturalize_file(denoised_path, phone_output, ppg_output, ppg_metadata, strength=0.4)
-
-        results.extend(
-            [
-                {
-                    "label": f"FreeVC baseline {target_name}",
-                    "method": "freevc_baseline",
+    results.extend(
+        [
+            {
+                "label": "FreeVC optimized male",
+                "method": "freevc_baseline",
+                "target": target_name,
+                "audio_url": build_public_url(session_dir.name, raw_output, config),
+                "audio_path": str(raw_output),
+                "selection": {
                     "target": target_name,
-                    "audio_url": build_public_url(session_dir.name, raw_output, config),
-                    "audio_path": str(raw_output),
-                    "profile": profile_payload(target_name, target_reference, "humanize_candidate"),
+                    "standard_similarity_score": selected_score.standard_similarity_score,
+                    "naturalness_proxy": selected_score.naturalness_proxy,
+                    "evaluated_target_count": selection.evaluated_target_count,
+                    "target_pool_size": selection.target_pool_size,
                 },
-                {
-                    "label": f"Metric+phone {target_name}",
-                    "method": "metric_phone",
+                "profile": profile_payload(
+                    target_name,
+                    target_reference,
+                    "humanize_candidate + privacy_target_optimizer",
+                    selection.target_pool_size,
+                    target_pool_name,
+                ),
+            },
+            {
+                "label": "Metric+phone optimized male",
+                "method": "metric_phone",
+                "target": target_name,
+                "audio_url": build_public_url(session_dir.name, phone_output, config),
+                "audio_path": str(phone_output),
+                "selection": {
                     "target": target_name,
-                    "audio_url": build_public_url(session_dir.name, phone_output, config),
-                    "audio_path": str(phone_output),
-                    "profile": profile_payload(target_name, target_reference, "humanize_candidate + phone_clean"),
+                    "standard_similarity_score": selected_score.standard_similarity_score,
+                    "naturalness_proxy": selected_score.naturalness_proxy,
+                    "evaluated_target_count": selection.evaluated_target_count,
+                    "target_pool_size": selection.target_pool_size,
                 },
-                {
-                    "label": f"PPG-tone {target_name}",
-                    "method": "ppg_tone",
+                "profile": profile_payload(
+                    target_name,
+                    target_reference,
+                    "humanize_candidate + privacy_target_optimizer + phone_clean",
+                    selection.target_pool_size,
+                    target_pool_name,
+                ),
+            },
+            {
+                "label": "PPG-tone optimized male",
+                "method": "ppg_tone",
+                "target": target_name,
+                "audio_url": build_public_url(session_dir.name, ppg_output, config),
+                "audio_path": str(ppg_output),
+                "metadata_path": str(ppg_metadata),
+                "selection": {
                     "target": target_name,
-                    "audio_url": build_public_url(session_dir.name, ppg_output, config),
-                    "audio_path": str(ppg_output),
-                    "metadata_path": str(ppg_metadata),
-                    "profile": profile_payload(
-                        target_name,
-                        target_reference,
-                        "humanize_candidate + phone_clean + ppg_tone_naturalizer",
-                    ),
+                    "standard_similarity_score": selected_score.standard_similarity_score,
+                    "naturalness_proxy": selected_score.naturalness_proxy,
+                    "evaluated_target_count": selection.evaluated_target_count,
+                    "target_pool_size": selection.target_pool_size,
                 },
-            ]
-        )
+                "profile": profile_payload(
+                    target_name,
+                    target_reference,
+                    "humanize_candidate + privacy_target_optimizer + phone_clean + ppg_tone_naturalizer",
+                    selection.target_pool_size,
+                    target_pool_name,
+                ),
+            },
+        ]
+    )
+    (session_dir / "selected_target_summary.json").write_text(
+        json.dumps(
+            {
+                "selected_target": target_name,
+                "selected_reference": str(target_reference),
+                "selected_raw_output": str(raw_output),
+                "selected_standard_similarity_score": selected_score.standard_similarity_score,
+                "selected_naturalness_proxy": selected_score.naturalness_proxy,
+                "target_pool_size": selection.target_pool_size,
+                "evaluated_target_count": selection.evaluated_target_count,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
     summary = {
         "session_id": session_dir.name,
@@ -233,9 +306,9 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
         "results": results,
         "notes": [
             "This is a record-then-process demo, not low-latency streaming.",
-            "The UI now uses only the recommended male target speaker: male=s6.",
-            "Each recording runs three male-target methods: FreeVC baseline, Metric+phone, and PPG-tone.",
-            "Metric+phone prioritizes ASV/ASR attack strength; PPG-tone adds Mandarin tone naturalization.",
+            "The UI evaluates a male target pool and selects the candidate with the lowest speaker-embedding similarity while penalizing over-aggressive prosody changes.",
+            "Each recording runs three male-target methods from the selected candidate: FreeVC optimized baseline, Metric+phone, and PPG-tone.",
+            "The standard similarity score follows standard.docx: score=(cosine+1)/2*100; lower is better for anonymization.",
         ],
     }
     try:
@@ -379,11 +452,15 @@ def create_app(config: DemoConfig) -> Flask:
 
     @app.get("/api/config")
     def api_config():
+        target_references = load_target_references(config.target_pool_config, fallback_paths=[FALLBACK_MALE_TARGET])
         return jsonify(
             {
                 "work_root": str(config.work_root),
                 "vc_python": str(config.vc_python),
-                "targets": {key: str(value) for key, value in RECOMMENDED_TARGETS.items()},
+                "target_pool_config": str(config.target_pool_config),
+                "target_pool_size": len(target_references),
+                "max_targets": config.max_targets,
+                "targets": [str(reference.path) for reference in target_references],
             }
         )
 
@@ -812,10 +889,13 @@ INDEX_HTML = """
       for (const item of payload.results || []) {
         const card = document.createElement("div");
         card.className = "result";
+        const selection = item.selection || {};
         card.innerHTML = `
           <h3>${escapeHtml(item.label)}</h3>
           <p>${escapeHtml(methodDescription(item.method))}</p>
           <audio controls src="${escapeHtml(item.audio_url)}"></audio>
+          <p>Selected target: ${escapeHtml(selection.target || item.target || "-")}</p>
+          <p>Pre-score: ${formatNumber(selection.standard_similarity_score)} / 100, naturalness proxy ${formatNumber(selection.naturalness_proxy)}</p>
           <div class="path">${escapeHtml(item.audio_path)}</div>
         `;
         results.appendChild(card);
@@ -842,10 +922,12 @@ INDEX_HTML = """
         return `<div class="notice">本次录音没有可展示的即时评估结果。</div>`;
       }
 
+      const lowestStandard = minBy(rows, "standard_similarity_score");
       const bestDrop = bestBy(rows, "source_similarity_reduction");
       const bestContent = minBy(rows, "asr_wer");
       const bestEffect = bestBy(rows, "timbre_privacy_index");
       const cards = [
+        ["Lowest standard score", formatNumber(lowestStandard.standard_similarity_score), lowestStandard.label],
         ["Best timbre removal", formatPercent(bestDrop.source_similarity_reduction), bestDrop.label],
         ["Lowest ASR WER", formatNumber(bestContent.asr_wer), bestContent.label],
         ["Best timbre index", formatNumber(bestEffect.timbre_privacy_index), bestEffect.label],
@@ -866,6 +948,7 @@ INDEX_HTML = """
             <td>${Number(row.privacy_rank)}</td>
             <td>${escapeHtml(row.label)}</td>
             <td>${formatNumber(row.source_similarity)}</td>
+            <td>${formatNumber(row.standard_similarity_score)}</td>
             <td>${formatPercent(row.source_similarity_reduction)}</td>
             <td>${formatNumber(row.asr_wer)}</td>
             <td>${formatPercent(row.content_preservation)}</td>
@@ -884,6 +967,7 @@ INDEX_HTML = """
                 <th>Rank</th>
                 <th>Method</th>
                 <th>Source similarity</th>
+                <th>Standard score ↓</th>
                 <th>Similarity drop</th>
                 <th>ASR WER ↓</th>
                 <th>Content kept ↑</th>
@@ -1036,6 +1120,8 @@ def main() -> None:
         vc_python=Path(args.vc_python).expanduser().resolve(),
         host=args.host,
         port=args.port,
+        target_pool_config=Path(args.target_pool_config).expanduser().resolve(),
+        max_targets=args.max_targets,
     )
     config.work_root.mkdir(parents=True, exist_ok=True)
     app = create_app(config)
