@@ -304,6 +304,17 @@ def process_recording(input_path: Path, session_dir: Path, config: DemoConfig) -
         "denoised_path": str(denoised_path),
         "denoised_url": build_public_url(session_dir.name, denoised_path, config),
         "results": results,
+        "selection_candidates": [
+            {
+                "rank": index + 1,
+                "target": f"male:{score.target_name}/{score.variant_name}",
+                "standard_similarity_score": score.standard_similarity_score,
+                "naturalness_proxy": score.naturalness_proxy,
+                "selection_score": score.selection_score,
+                "duration_ratio": score.duration_ratio,
+            }
+            for index, score in enumerate(selection.candidates[:8])
+        ],
         "notes": [
             "This is a record-then-process demo, not low-latency streaming.",
             "The UI evaluates a male target pool and selects the candidate with the lowest speaker-embedding similarity while penalizing over-aggressive prosody changes.",
@@ -910,20 +921,53 @@ INDEX_HTML = """
           <h3>${escapeHtml(item.label)}</h3>
           <p>${escapeHtml(methodDescription(item.method))}</p>
           <audio controls src="${escapeHtml(item.audio_url)}"></audio>
-          <p>Selected target: ${escapeHtml(selection.target || item.target || "-")}</p>
-          <p>Pre-score: ${formatNumber(selection.standard_similarity_score)} / 100, naturalness proxy ${formatNumber(selection.naturalness_proxy)}</p>
+          <p>Shared base target: ${escapeHtml(selection.target || item.target || "-")}</p>
+          <p>Base pre-score: ${formatNumber(selection.standard_similarity_score)} / 100, naturalness proxy ${formatNumber(selection.naturalness_proxy)}</p>
           <div class="path">${escapeHtml(item.audio_path)}</div>
         `;
         results.appendChild(card);
       }
       summary.innerHTML = `
         <h3>Session</h3>
+        ${renderTargetSelection(payload.selection_candidates || [])}
         ${renderRecordingEvaluation(payload.recording_evaluation)}
         <pre>${escapeHtml(JSON.stringify({
           session_id: payload.session_id,
           denoised_path: payload.denoised_path,
           notes: payload.notes
         }, null, 2))}</pre>
+      `;
+    }
+
+    function renderTargetSelection(candidates) {
+      if (!candidates.length) return "";
+      const rows = candidates.map(row => `
+        <tr>
+          <td>${Number(row.rank)}</td>
+          <td>${escapeHtml(row.target)}</td>
+          <td>${formatNumber(row.standard_similarity_score)}</td>
+          <td>${formatNumber(row.naturalness_proxy)}</td>
+          <td>${formatNumber(row.selection_score)}</td>
+          <td>${formatNumber(row.duration_ratio)}</td>
+        </tr>
+      `).join("");
+      return `
+        <div class="notice">三种方法共享同一个最佳 base target；后面的 Metric+phone 和 PPG-tone 是在该底座音频上继续后处理。下面是本次录音的目标候选排序，selection score 同时考虑低相似度和真人音色约束。</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Candidate</th>
+                <th>Base standard score ↓</th>
+                <th>Naturalness ↑</th>
+                <th>Selection score ↓</th>
+                <th>Duration ratio</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
       `;
     }
 
