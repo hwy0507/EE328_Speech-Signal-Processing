@@ -8,7 +8,7 @@ Course repository containing both the regular lab homework archive and the final
 ## Repository Layout
 
 ```text
-期末proj/
+EE328_Speech-Signal-Processing/
 ├── README.md
 ├── Lab-Homework/
 └── final_project/
