@@ -1,0 +1,10 @@
+{
+  "reference_audio": "C:\\Users\\zhangs\\AppData\\Local\\Temp\\similarity_reference_48gose6q.wav",
+  "candidate_audio": "C:\\Users\\zhangs\\AppData\\Local\\Temp\\similarity_candidate_16po7r8h.wav",
+  "reference_label": "中文test2.m4a",
+  "candidate_label": "標準錄音 4.mp3",
+  "embedding_backend": "OpenVoice se_extractor",
+  "device": "cuda:0",
+  "cosine_similarity": 0.568963,
+  "similarity_score": 78.45
+}

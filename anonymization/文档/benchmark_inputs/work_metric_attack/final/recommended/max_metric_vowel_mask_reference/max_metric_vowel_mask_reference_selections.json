@@ -1,0 +1,76 @@
+[
+  {
+    "source_name": "test_denoised",
+    "variant": "metric_attack",
+    "selected_candidate": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/male_leaning/test_denoised/test_denoised_freevc_male_leaning_s6.wav",
+    "final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/max_metric_vowel_mask_reference/test_denoised_max_metric_vowel_mask_reference.wav",
+    "score": 11.436923841366458,
+    "metric_candidate_id": "m_s6",
+    "profile": {
+      "backend": "freevc",
+      "name": "freevc_male_leaning_s6",
+      "target_reference": "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav",
+      "target_strategy": "single_ref_group",
+      "target_pool_name": "male_leaning",
+      "target_reference_count": 3,
+      "target_reference_paths": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s2.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s5.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav"
+      ],
+      "postprocess": "humanize_candidate + vowel_mask",
+      "metric_attack_profile": {
+        "name": "vowel_mask",
+        "description": "Formant-region masking by band rejection; keeps speech voice-like but weakens ASR cues.",
+        "pitch_semitones": 0.0,
+        "noise_amplitude": 0.011,
+        "filter_parts": [
+          "highpass=f=190",
+          "lowpass=f=3050",
+          "bandreject=f=850:w=260",
+          "bandreject=f=2180:w=420",
+          "equalizer=f=2650:t=q:w=0.9:g=2.0",
+          "acompressor=threshold=0.055:ratio=3.0:attack=6:release=85"
+        ]
+      }
+    },
+    "original_final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/vowel_mask/test_denoised/test_denoised_freevc_m_s6_vowel_mask.wav"
+  },
+  {
+    "source_name": "绿色_denoised",
+    "variant": "metric_attack",
+    "selected_candidate": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/绿色_denoised/绿色_denoised_freevc_female_leaning_s4.wav",
+    "final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/max_metric_vowel_mask_reference/绿色_denoised_max_metric_vowel_mask_reference.wav",
+    "score": 13.849700184949548,
+    "metric_candidate_id": "f_s4",
+    "profile": {
+      "backend": "freevc",
+      "name": "freevc_female_leaning_s4",
+      "target_reference": "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav",
+      "target_strategy": "single_ref_group",
+      "target_pool_name": "female_leaning",
+      "target_reference_count": 3,
+      "target_reference_paths": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s1.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s3.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s4.wav"
+      ],
+      "postprocess": "humanize_candidate + vowel_mask",
+      "metric_attack_profile": {
+        "name": "vowel_mask",
+        "description": "Formant-region masking by band rejection; keeps speech voice-like but weakens ASR cues.",
+        "pitch_semitones": 0.0,
+        "noise_amplitude": 0.011,
+        "filter_parts": [
+          "highpass=f=190",
+          "lowpass=f=3050",
+          "bandreject=f=850:w=260",
+          "bandreject=f=2180:w=420",
+          "equalizer=f=2650:t=q:w=0.9:g=2.0",
+          "acompressor=threshold=0.055:ratio=3.0:attack=6:release=85"
+        ]
+      }
+    },
+    "original_final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/vowel_mask/绿色_denoised/denoised_freevc_f_s4_vowel_mask.wav"
+  }
+]

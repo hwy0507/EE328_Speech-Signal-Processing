@@ -1,0 +1,301 @@
+{
+  "results_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/voiceprivacy_metric_attack_results.json",
+  "selection_root": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/preferred_variants",
+  "output_root": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended",
+  "exports": [
+    {
+      "label": "balanced_phone_clean_male",
+      "variant_name": "phone_clean_m_s6__m_s6",
+      "output_dir": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male",
+      "selection_json": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/balanced_phone_clean_male_selections.json",
+      "metrics": {
+        "privacy": {
+          "eer": 0.5833333333333333,
+          "threshold": 0.08905693143606186,
+          "false_accept_rate": 0.6666666666666666,
+          "false_reject_rate": 0.5,
+          "target_mean_score": 0.06126002036035061,
+          "nontarget_mean_score": 0.09432539091600727,
+          "num_target_trials": 2,
+          "num_nontarget_trials": 12
+        },
+        "utility": {
+          "wer": 0.6551724137931034,
+          "total_edits": 19,
+          "total_reference_tokens": 29,
+          "per_utterance": [
+            {
+              "source_name": "test_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/phone_clean/test_denoised/test_denoised_freevc_m_s6_phone_clean.wav",
+              "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+              "hypothesis_text": "南方科技大學電子應變企業工程企業,實際是工程卵業",
+              "edits": 13,
+              "reference_token_count": 20,
+              "wer": 0.65
+            },
+            {
+              "source_name": "绿色_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/phone_clean/绿色_denoised/denoised_freevc_m_s6_phone_clean.wav",
+              "reference_text": "我选择的颜色是绿色",
+              "hypothesis_text": "我選擇的一項是鋁鎖",
+              "edits": 6,
+              "reference_token_count": 9,
+              "wer": 0.6666666666666666
+            }
+          ]
+        }
+      },
+      "files": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/test_denoised_balanced_phone_clean_male.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav"
+      ]
+    },
+    {
+      "label": "balanced_phone_clean_female",
+      "variant_name": "phone_clean_f_s4__f_s4",
+      "output_dir": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_female",
+      "selection_json": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_female/balanced_phone_clean_female_selections.json",
+      "metrics": {
+        "privacy": {
+          "eer": 0.5,
+          "threshold": 0.09058480709791183,
+          "false_accept_rate": 0.5,
+          "false_reject_rate": 0.5,
+          "target_mean_score": 0.06342990044504404,
+          "nontarget_mean_score": 0.09638081362936646,
+          "num_target_trials": 2,
+          "num_nontarget_trials": 12
+        },
+        "utility": {
+          "wer": 1.4137931034482758,
+          "total_edits": 41,
+          "total_reference_tokens": 29,
+          "per_utterance": [
+            {
+              "source_name": "test_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/phone_clean/test_denoised/test_denoised_freevc_f_s4_phone_clean.wav",
+              "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+              "hypothesis_text": "南方科技大學電子裏面的協議還有工程協議心理學工程專業",
+              "edits": 16,
+              "reference_token_count": 20,
+              "wer": 0.8
+            },
+            {
+              "source_name": "绿色_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/phone_clean/绿色_denoised/denoised_freevc_f_s4_phone_clean.wav",
+              "reference_text": "我选择的颜色是绿色",
+              "hypothesis_text": "Wash into the air, this is Musso",
+              "edits": 25,
+              "reference_token_count": 9,
+              "wer": 2.7777777777777777
+            }
+          ]
+        }
+      },
+      "files": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_female/test_denoised_balanced_phone_clean_female.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_female/绿色_denoised_balanced_phone_clean_female.wav"
+      ]
+    },
+    {
+      "label": "raw_metric_male",
+      "variant_name": "raw_m_s6__m_s6",
+      "output_dir": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_male",
+      "selection_json": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_male/raw_metric_male_selections.json",
+      "metrics": {
+        "privacy": {
+          "eer": 0.5833333333333333,
+          "threshold": 0.09019101411104202,
+          "false_accept_rate": 0.6666666666666666,
+          "false_reject_rate": 0.5,
+          "target_mean_score": 0.07591040804982185,
+          "nontarget_mean_score": 0.12301162428533037,
+          "num_target_trials": 2,
+          "num_nontarget_trials": 12
+        },
+        "utility": {
+          "wer": 0.41379310344827586,
+          "total_edits": 12,
+          "total_reference_tokens": 29,
+          "per_utterance": [
+            {
+              "source_name": "test_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/male_leaning/test_denoised/test_denoised_freevc_male_leaning_s6.wav",
+              "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+              "hypothesis_text": "南方科技大學電子裡面寫工程寫,實際上是工程專業",
+              "edits": 12,
+              "reference_token_count": 20,
+              "wer": 0.6
+            },
+            {
+              "source_name": "绿色_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/male_leaning/绿色_denoised/绿色_denoised_freevc_male_leaning_s6.wav",
+              "reference_text": "我选择的颜色是绿色",
+              "hypothesis_text": "我选择的颜色是绿色。",
+              "edits": 0,
+              "reference_token_count": 9,
+              "wer": 0.0
+            }
+          ]
+        }
+      },
+      "files": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_male/test_denoised_raw_metric_male.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_male/绿色_denoised_raw_metric_male.wav"
+      ]
+    },
+    {
+      "label": "raw_metric_female",
+      "variant_name": "raw_f_s4__f_s4",
+      "output_dir": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_female",
+      "selection_json": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_female/raw_metric_female_selections.json",
+      "metrics": {
+        "privacy": {
+          "eer": 0.5,
+          "threshold": 0.1265566051006317,
+          "false_accept_rate": 0.5,
+          "false_reject_rate": 0.5,
+          "target_mean_score": 0.10498800501227379,
+          "nontarget_mean_score": 0.12167581357061863,
+          "num_target_trials": 2,
+          "num_nontarget_trials": 12
+        },
+        "utility": {
+          "wer": 0.6206896551724138,
+          "total_edits": 18,
+          "total_reference_tokens": 29,
+          "per_utterance": [
+            {
+              "source_name": "test_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/test_denoised/test_denoised_freevc_female_leaning_s4.wav",
+              "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+              "hypothesis_text": "南方科技大学,电子里面的系业工程的系业,心理系的工程专业",
+              "edits": 11,
+              "reference_token_count": 20,
+              "wer": 0.55
+            },
+            {
+              "source_name": "绿色_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/vc_candidates/female_leaning/绿色_denoised/绿色_denoised_freevc_female_leaning_s4.wav",
+              "reference_text": "我选择的颜色是绿色",
+              "hypothesis_text": "我先做点这些谜色",
+              "edits": 7,
+              "reference_token_count": 9,
+              "wer": 0.7777777777777778
+            }
+          ]
+        }
+      },
+      "files": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_female/test_denoised_raw_metric_female.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/raw_metric_female/绿色_denoised_raw_metric_female.wav"
+      ]
+    },
+    {
+      "label": "mixed_metric_reference",
+      "variant_name": "phone_clean_m_s6__f_s4",
+      "output_dir": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/mixed_metric_reference",
+      "selection_json": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/mixed_metric_reference/mixed_metric_reference_selections.json",
+      "metrics": {
+        "privacy": {
+          "eer": 0.5833333333333333,
+          "threshold": 0.08905693143606186,
+          "false_accept_rate": 0.6666666666666666,
+          "false_reject_rate": 0.5,
+          "target_mean_score": 0.058862642385065556,
+          "nontarget_mean_score": 0.09468712809029967,
+          "num_target_trials": 2,
+          "num_nontarget_trials": 12
+        },
+        "utility": {
+          "wer": 1.3103448275862069,
+          "total_edits": 38,
+          "total_reference_tokens": 29,
+          "per_utterance": [
+            {
+              "source_name": "test_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/phone_clean/test_denoised/test_denoised_freevc_m_s6_phone_clean.wav",
+              "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+              "hypothesis_text": "南方科技大學電子應變企業工程企業,實際是工程卵業",
+              "edits": 13,
+              "reference_token_count": 20,
+              "wer": 0.65
+            },
+            {
+              "source_name": "绿色_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/phone_clean/绿色_denoised/denoised_freevc_f_s4_phone_clean.wav",
+              "reference_text": "我选择的颜色是绿色",
+              "hypothesis_text": "Wash into the air, this is Musso",
+              "edits": 25,
+              "reference_token_count": 9,
+              "wer": 2.7777777777777777
+            }
+          ]
+        }
+      },
+      "files": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/mixed_metric_reference/test_denoised_mixed_metric_reference.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/mixed_metric_reference/绿色_denoised_mixed_metric_reference.wav"
+      ]
+    },
+    {
+      "label": "max_metric_vowel_mask_reference",
+      "variant_name": "vowel_mask_m_s6__f_s4",
+      "output_dir": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/max_metric_vowel_mask_reference",
+      "selection_json": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/max_metric_vowel_mask_reference/max_metric_vowel_mask_reference_selections.json",
+      "metrics": {
+        "privacy": {
+          "eer": 0.5416666666666667,
+          "threshold": 0.06770934164524078,
+          "false_accept_rate": 0.5833333333333334,
+          "false_reject_rate": 0.5,
+          "target_mean_score": 0.0511452816426754,
+          "nontarget_mean_score": 0.06327888827460508,
+          "num_target_trials": 2,
+          "num_nontarget_trials": 12
+        },
+        "utility": {
+          "wer": 4.241379310344827,
+          "total_edits": 123,
+          "total_reference_tokens": 29,
+          "per_utterance": [
+            {
+              "source_name": "test_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/test.wav",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/vowel_mask/test_denoised/test_denoised_freevc_m_s6_vowel_mask.wav",
+              "reference_text": "南方科技大学电子与电器工程系信息工程专业",
+              "hypothesis_text": "南北方科技大學電子電子企業工程企業,心理事業工程卵業",
+              "edits": 15,
+              "reference_token_count": 20,
+              "wer": 0.75
+            },
+            {
+              "source_name": "绿色_denoised",
+              "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/绿色.m4a",
+              "trial_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/postprocessed/vowel_mask/绿色_denoised/denoised_freevc_f_s4_vowel_mask.wav",
+              "reference_text": "我选择的颜色是绿色",
+              "hypothesis_text": "先来一下 mendicent今天谢到 here也祝大家一个幸福的生命祝大家新年快乐这个明天都会不遵徙的生命江湖祝祝每一个生命好久不见对祝祝每一个生命祝祝每一年祝祝每一个生命祝祝每一个生命祝祝每一个生命祝祝每个生命祝祝祝摁着",
+              "edits": 108,
+              "reference_token_count": 9,
+              "wer": 12.0
+            }
+          ]
+        }
+      },
+      "files": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/max_metric_vowel_mask_reference/test_denoised_max_metric_vowel_mask_reference.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/max_metric_vowel_mask_reference/绿色_denoised_max_metric_vowel_mask_reference.wav"
+      ]
+    }
+  ]
+}

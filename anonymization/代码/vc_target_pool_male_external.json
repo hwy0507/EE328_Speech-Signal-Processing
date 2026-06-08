@@ -1,0 +1,18 @@
+{
+  "name": "external_male_privacy_pool",
+  "strategy": "single_ref_group",
+  "reference_paths": [
+    "external_voice_targets/male/cmu_arctic_bdl_male_ref.wav",
+    "external_voice_targets/male/cmu_arctic_rms_male_ref.wav",
+    "external_voice_targets/male/cmu_arctic_jmk_male_ref.wav",
+    "external_voice_targets/male/cmu_arctic_awb_male_ref.wav",
+    "external_voice_targets/male/cmu_arctic_ksp_male_ref.wav",
+    "external_voice_targets/male/cmu_arctic_rxr_male_ref.wav",
+    "../../常规lab/lab9/s2.wav",
+    "../../常规lab/lab9/s5.wav",
+    "../../常规lab/lab9/s6.wav"
+  ],
+  "clip_seconds": 1.0,
+  "silence_ms": 80,
+  "normalize_peak_dbfs": -3.0
+}

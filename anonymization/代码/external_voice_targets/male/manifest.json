@@ -1,0 +1,77 @@
+{
+  "dataset": "CMU ARCTIC",
+  "note": "Public speech synthesis corpus prepared as anonymous male target references. Generated audio files are local artifacts and are not intended to be committed.",
+  "speakers": [
+    {
+      "speaker": "bdl",
+      "dataset": "CMU ARCTIC",
+      "source": "torchaudio.datasets.CMUARCTIC(url='bdl')",
+      "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/external_voice_targets/male/cmu_arctic_bdl_male_ref.wav",
+      "duration_sec": 8.0051875,
+      "utterances": [
+        "arctic_a0001: Author of the danger trail, Philip Steels, etc.",
+        "arctic_a0081: What if she did not come to the rock.",
+        "arctic_a0162: That's the sub-foreman, explained Thorpe."
+      ]
+    },
+    {
+      "speaker": "rms",
+      "dataset": "CMU ARCTIC",
+      "source": "torchaudio.datasets.CMUARCTIC(url='rms')",
+      "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/external_voice_targets/male/cmu_arctic_rms_male_ref.wav",
+      "duration_sec": 8.485,
+      "utterances": [
+        "arctic_a0001: Author of the danger trail, Philip Steels, etc.",
+        "arctic_a0081: What if she did not come to the rock.",
+        "arctic_a0162: That's the sub-foreman, explained Thorpe."
+      ]
+    },
+    {
+      "speaker": "jmk",
+      "dataset": "CMU ARCTIC",
+      "source": "torchaudio.datasets.CMUARCTIC(url='jmk')",
+      "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/external_voice_targets/male/cmu_arctic_jmk_male_ref.wav",
+      "duration_sec": 8.285125,
+      "utterances": [
+        "arctic_a0001: Author of the danger trail, Philip Steels, etc.",
+        "arctic_a0080: What if Jeanne failed him.",
+        "arctic_a0162: That's the sub-foreman, explained Thorpe."
+      ]
+    },
+    {
+      "speaker": "awb",
+      "dataset": "CMU ARCTIC",
+      "source": "torchaudio.datasets.CMUARCTIC(url='awb')",
+      "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/external_voice_targets/male/cmu_arctic_awb_male_ref.wav",
+      "duration_sec": 8.315,
+      "utterances": [
+        "arctic_a0001: AUTHOR OF THE DANGER TRAIL, PHILIP STEELS, ETC",
+        "arctic_a0082: What if Jeanne failed him.",
+        "arctic_a0163: Take away their foreman and they wouldn't be worth their grub."
+      ]
+    },
+    {
+      "speaker": "ksp",
+      "dataset": "CMU ARCTIC",
+      "source": "torchaudio.datasets.CMUARCTIC(url='ksp')",
+      "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/external_voice_targets/male/cmu_arctic_ksp_male_ref.wav",
+      "duration_sec": 8.3251875,
+      "utterances": [
+        "arctic_a0001: Author of the danger trail, Philip Steels, etc.",
+        "arctic_a0081: What if she did not come to the rock.",
+        "arctic_a0162: That's the sub-foreman, explained Thorpe."
+      ]
+    },
+    {
+      "speaker": "rxr",
+      "dataset": "CMU ARCTIC",
+      "source": "torchaudio.datasets.CMUARCTIC(url='rxr')",
+      "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/external_voice_targets/male/cmu_arctic_rxr_male_ref.wav",
+      "duration_sec": 8.562625,
+      "utterances": [
+        "arctic_a0001: Author of the danger trail, Philip Steels, etc.",
+        "arctic_a0048: He looked at the handkerchief more, closely."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+.venv-1/
+voice_env/
+voice_env_clean/
+代码/voice_env/
+代码/voice_env_clean/
+
+# Logs
+*.log
+
+# Generated outputs under code/
+代码/converted/
+代码/*.mask.npy
+代码/out_*.wav
+代码/out_*.flac
+代码/out_*.mp3
+代码/converted_*.wav
+代码/test_16k_auto_*.wav
+代码/test_16k_converted_female.wav
+代码/temp_ascii.wav
+代码/vc_*.wav
+代码/vc_*/
+代码/anon_*.json
+代码/anon_*.wav
+代码/anon_verify/
+代码/anon_verify2/
+代码/anon_verify_multi*/
+代码/anon_verify_multi_work*/
+代码/s2.wav
+代码/s5.wav
+代码/*_similarity.json
+代码/similarity_*.json
+代码/voice_source_*/
+代码/voice_target_*/
+代码/similarity_reference_*/
+代码/similarity_candidate_*/
+代码/ov_embed_ext_*/
+代码/spk_sim_ext_*/
+代码/tools/search_freevc_results.txt
+代码/tools/voice_env_pkglist_*.txt
+代码/*.png
+
+# Temporary Office files
+~$*.docx
+*.docx
+
+# OS
+.DS_Store
+Thumbs.db

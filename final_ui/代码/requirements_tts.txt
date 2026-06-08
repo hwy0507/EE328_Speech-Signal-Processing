@@ -1,0 +1,14 @@
+# Optional FreeVC / Coqui TTS environment
+# Recommended Python: 3.10
+# Install in a separate environment, then configure env_map.json.
+
+numpy>=1.22.0,<2.0
+scipy>=1.8.0
+soundfile>=0.12.1
+librosa>=0.10.0
+pydub>=0.25.1
+TTS>=0.22.0
+
+# Install torch according to your CUDA/CPU environment if TTS does not install a suitable one automatically.
+# CPU example:
+# pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu

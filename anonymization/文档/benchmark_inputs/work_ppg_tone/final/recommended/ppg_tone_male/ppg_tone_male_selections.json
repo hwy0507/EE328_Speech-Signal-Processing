@@ -1,0 +1,88 @@
+[
+  {
+    "source_name": "test_denoised",
+    "variant": "ppg_tone_naturalizer",
+    "selected_candidate": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/test_denoised_balanced_phone_clean_male.wav",
+    "final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_male/test_denoised_ppg_tone_male.wav",
+    "score": 11.436923841366458,
+    "metric_candidate_id": "m_s6",
+    "profile": {
+      "backend": "freevc",
+      "name": "freevc_male_leaning_s6",
+      "target_reference": "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav",
+      "target_strategy": "single_ref_group",
+      "target_pool_name": "male_leaning",
+      "target_reference_count": 3,
+      "target_reference_paths": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s2.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s5.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav"
+      ],
+      "postprocess": "humanize_candidate + phone_clean+ppg_tone_naturalizer",
+      "metric_attack_profile": {
+        "name": "phone_clean",
+        "description": "Narrowband telephone-like channel without added noise.",
+        "pitch_semitones": 0.0,
+        "noise_amplitude": 0.0,
+        "filter_parts": [
+          "highpass=f=155",
+          "lowpass=f=3550",
+          "equalizer=f=650:t=q:w=0.9:g=2.0",
+          "equalizer=f=1750:t=q:w=1.1:g=-3.2",
+          "equalizer=f=2850:t=q:w=0.9:g=2.5",
+          "acompressor=threshold=0.05:ratio=2.8:attack=6:release=80"
+        ]
+      },
+      "ppg_tone_base_variant": "balanced_phone_clean_male",
+      "ppg_tone_output_variant": "ppg_tone_male",
+      "ppg_tone_method": "PPG-inspired content bottleneck + Mandarin tone contour naturalization",
+      "ppg_tone_strength": 0.4
+    },
+    "original_final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/test_denoised_balanced_phone_clean_male.wav",
+    "base_variant": "balanced_phone_clean_male",
+    "ppg_tone_metadata": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/analysis/ppg_tone_male/test_denoised.json"
+  },
+  {
+    "source_name": "绿色_denoised",
+    "variant": "ppg_tone_naturalizer",
+    "selected_candidate": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav",
+    "final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_male/绿色_denoised_ppg_tone_male.wav",
+    "score": 14.163214416108264,
+    "metric_candidate_id": "m_s6",
+    "profile": {
+      "backend": "freevc",
+      "name": "freevc_male_leaning_s6",
+      "target_reference": "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav",
+      "target_strategy": "single_ref_group",
+      "target_pool_name": "male_leaning",
+      "target_reference_count": 3,
+      "target_reference_paths": [
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s2.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s5.wav",
+        "/Users/hwy/Desktop/个人/26春/语音信号处理/常规lab/lab9/s6.wav"
+      ],
+      "postprocess": "humanize_candidate + phone_clean+ppg_tone_naturalizer",
+      "metric_attack_profile": {
+        "name": "phone_clean",
+        "description": "Narrowband telephone-like channel without added noise.",
+        "pitch_semitones": 0.0,
+        "noise_amplitude": 0.0,
+        "filter_parts": [
+          "highpass=f=155",
+          "lowpass=f=3550",
+          "equalizer=f=650:t=q:w=0.9:g=2.0",
+          "equalizer=f=1750:t=q:w=1.1:g=-3.2",
+          "equalizer=f=2850:t=q:w=0.9:g=2.5",
+          "acompressor=threshold=0.05:ratio=2.8:attack=6:release=80"
+        ]
+      },
+      "ppg_tone_base_variant": "balanced_phone_clean_male",
+      "ppg_tone_output_variant": "ppg_tone_male",
+      "ppg_tone_method": "PPG-inspired content bottleneck + Mandarin tone contour naturalization",
+      "ppg_tone_strength": 0.4
+    },
+    "original_final_output": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav",
+    "base_variant": "balanced_phone_clean_male",
+    "ppg_tone_metadata": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/analysis/ppg_tone_male/绿色_denoised.json"
+  }
+]

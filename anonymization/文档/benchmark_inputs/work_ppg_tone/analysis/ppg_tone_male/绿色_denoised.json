@@ -1,0 +1,345 @@
+{
+  "method": "ppg_inspired_content_bottleneck_with_mandarin_tone_naturalization",
+  "limits": [
+    "This is a lightweight PPG-inspired postfilter, not a trained neural PPG extractor.",
+    "It preserves FreeVC anonymized timbre and only applies conservative spectral-envelope and tone-contour smoothing."
+  ],
+  "source": {
+    "frame_count": 399,
+    "voiced_ratio": 0.6040100250626567,
+    "median_f0_hz": 96.38554382324219,
+    "p95_f0_step_st": 10.153020858764648,
+    "f0_jump_ratio": 0.31952662721893493,
+    "content_entropy_mean": 0.9207077026367188,
+    "tone_error_st_mean": 1.5213595628738403,
+    "tone_counts": {
+      "level": 2,
+      "rising": 1,
+      "falling": 0,
+      "dipping": 1,
+      "neutral": 3
+    },
+    "tone_posterior_mean": {
+      "level": 0.25344860553741455,
+      "rising": 0.13418206572532654,
+      "falling": 0.09909434616565704,
+      "dipping": 0.28072232007980347,
+      "neutral": 0.23255352675914764
+    },
+    "tone_segments": [
+      {
+        "start_frame": 74,
+        "end_frame": 80,
+        "start_sec": 0.7599999904632568,
+        "end_sec": 0.8100000023841858,
+        "duration_sec": 0.06,
+        "start_f0_hz": 83.33332824707031,
+        "end_f0_hz": 141.5929412841797,
+        "slope_st": 0.0,
+        "label": "neutral",
+        "confidence": 0.62
+      },
+      {
+        "start_frame": 125,
+        "end_frame": 156,
+        "start_sec": 1.2699999809265137,
+        "end_sec": 1.5700000524520874,
+        "duration_sec": 0.31,
+        "start_f0_hz": 108.8435287475586,
+        "end_f0_hz": 100.62892150878906,
+        "slope_st": 1.1940422058105469,
+        "label": "level",
+        "confidence": 0.720496482849121
+      },
+      {
+        "start_frame": 158,
+        "end_frame": 252,
+        "start_sec": 1.600000023841858,
+        "end_sec": 2.5299999713897705,
+        "duration_sec": 0.94,
+        "start_f0_hz": 296.2962341308594,
+        "end_f0_hz": 347.8261413574219,
+        "slope_st": 1.489706039428711,
+        "label": "dipping",
+        "confidence": 0.8167617797851563
+      },
+      {
+        "start_frame": 262,
+        "end_frame": 329,
+        "start_sec": 2.640000104904175,
+        "end_sec": 3.299999952316284,
+        "duration_sec": 0.67,
+        "start_f0_hz": 126.984130859375,
+        "end_f0_hz": 108.10810852050781,
+        "slope_st": 1.5054759979248047,
+        "label": "level",
+        "confidence": 0.6945436668395996
+      },
+      {
+        "start_frame": 339,
+        "end_frame": 355,
+        "start_sec": 3.4100000858306885,
+        "end_sec": 3.559999942779541,
+        "duration_sec": 0.16,
+        "start_f0_hz": 108.10810852050781,
+        "end_f0_hz": 175.82418823242188,
+        "slope_st": 10.62074089050293,
+        "label": "rising",
+        "confidence": 0.9
+      },
+      {
+        "start_frame": 365,
+        "end_frame": 369,
+        "start_sec": 3.6700000762939453,
+        "end_sec": 3.700000047683716,
+        "duration_sec": 0.04,
+        "start_f0_hz": 130.08128356933594,
+        "end_f0_hz": 86.48649597167969,
+        "slope_st": 0.0,
+        "label": "neutral",
+        "confidence": 0.62
+      },
+      {
+        "start_frame": 373,
+        "end_frame": 384,
+        "start_sec": 3.75,
+        "end_sec": 3.8499999046325684,
+        "duration_sec": 0.11,
+        "start_f0_hz": 124.03099822998047,
+        "end_f0_hz": 125.98423767089844,
+        "slope_st": 0.5044898986816406,
+        "label": "neutral",
+        "confidence": 0.6
+      }
+    ]
+  },
+  "before": {
+    "frame_count": 399,
+    "voiced_ratio": 0.5739348370927319,
+    "median_f0_hz": 112.67605590820312,
+    "p95_f0_step_st": 15.971002578735352,
+    "f0_jump_ratio": 0.23809523809523808,
+    "content_entropy_mean": 0.9455101490020752,
+    "tone_error_st_mean": 1.2970640659332275,
+    "tone_counts": {
+      "level": 0,
+      "rising": 0,
+      "falling": 3,
+      "dipping": 2,
+      "neutral": 2
+    },
+    "tone_posterior_mean": {
+      "level": 0.09675931930541992,
+      "rising": 0.09675931930541992,
+      "falling": 0.29326170682907104,
+      "dipping": 0.28713786602020264,
+      "neutral": 0.2260836511850357
+    },
+    "tone_segments": [
+      {
+        "start_frame": 126,
+        "end_frame": 158,
+        "start_sec": 1.2799999713897705,
+        "end_sec": 1.590000033378601,
+        "duration_sec": 0.32,
+        "start_f0_hz": 258.0645446777344,
+        "end_f0_hz": 95.80838012695312,
+        "slope_st": -2.0371055603027344,
+        "label": "falling",
+        "confidence": 0.7197587966918946
+      },
+      {
+        "start_frame": 160,
+        "end_frame": 249,
+        "start_sec": 1.6200000047683716,
+        "end_sec": 2.5,
+        "duration_sec": 0.89,
+        "start_f0_hz": 168.42108154296875,
+        "end_f0_hz": 94.11763763427734,
+        "slope_st": 1.1473274230957031,
+        "label": "dipping",
+        "confidence": 0.7634194374084473
+      },
+      {
+        "start_frame": 258,
+        "end_frame": 288,
+        "start_sec": 2.5999999046325684,
+        "end_sec": 2.890000104904175,
+        "duration_sec": 0.3,
+        "start_f0_hz": 168.42108154296875,
+        "end_f0_hz": 88.3978042602539,
+        "slope_st": -11.166584014892578,
+        "label": "falling",
+        "confidence": 0.9
+      },
+      {
+        "start_frame": 290,
+        "end_frame": 328,
+        "start_sec": 2.9200000762939453,
+        "end_sec": 3.2899999618530273,
+        "duration_sec": 0.38,
+        "start_f0_hz": 94.11763763427734,
+        "end_f0_hz": 107.38256072998047,
+        "slope_st": -3.723501205444336,
+        "label": "falling",
+        "confidence": 0.8602917671203614
+      },
+      {
+        "start_frame": 340,
+        "end_frame": 356,
+        "start_sec": 3.4200000762939453,
+        "end_sec": 3.569999933242798,
+        "duration_sec": 0.16,
+        "start_f0_hz": 123.07693481445312,
+        "end_f0_hz": 149.53273010253906,
+        "slope_st": 8.801931381225586,
+        "label": "dipping",
+        "confidence": 0.8640244483947754
+      },
+      {
+        "start_frame": 358,
+        "end_frame": 366,
+        "start_sec": 3.5999999046325684,
+        "end_sec": 3.6700000762939453,
+        "duration_sec": 0.08,
+        "start_f0_hz": 103.22582244873047,
+        "end_f0_hz": 96.96969604492188,
+        "slope_st": -0.3465099334716797,
+        "label": "neutral",
+        "confidence": 0.6
+      },
+      {
+        "start_frame": 369,
+        "end_frame": 373,
+        "start_sec": 3.7100000381469727,
+        "end_sec": 3.740000009536743,
+        "duration_sec": 0.04,
+        "start_f0_hz": 253.96826171875,
+        "end_f0_hz": 231.88404846191406,
+        "slope_st": 0.0,
+        "label": "neutral",
+        "confidence": 0.62
+      }
+    ]
+  },
+  "after": {
+    "frame_count": 399,
+    "voiced_ratio": 0.5739348370927319,
+    "median_f0_hz": 112.67605590820312,
+    "p95_f0_step_st": 15.971002578735352,
+    "f0_jump_ratio": 0.23809523809523808,
+    "content_entropy_mean": 0.945551872253418,
+    "tone_error_st_mean": 1.2865275144577026,
+    "tone_counts": {
+      "level": 1,
+      "rising": 0,
+      "falling": 3,
+      "dipping": 1,
+      "neutral": 2
+    },
+    "tone_posterior_mean": {
+      "level": 0.2444206178188324,
+      "rising": 0.09911761432886124,
+      "falling": 0.29561954736709595,
+      "dipping": 0.13240212202072144,
+      "neutral": 0.2284414917230606
+    },
+    "tone_segments": [
+      {
+        "start_frame": 126,
+        "end_frame": 158,
+        "start_sec": 1.2799999713897705,
+        "end_sec": 1.590000033378601,
+        "duration_sec": 0.32,
+        "start_f0_hz": 258.0645446777344,
+        "end_f0_hz": 95.80838012695312,
+        "slope_st": -2.0371055603027344,
+        "label": "falling",
+        "confidence": 0.7197587966918946
+      },
+      {
+        "start_frame": 160,
+        "end_frame": 249,
+        "start_sec": 1.6200000047683716,
+        "end_sec": 2.5,
+        "duration_sec": 0.89,
+        "start_f0_hz": 168.42108154296875,
+        "end_f0_hz": 94.11763763427734,
+        "slope_st": 1.1864376068115234,
+        "label": "level",
+        "confidence": 0.721130199432373
+      },
+      {
+        "start_frame": 258,
+        "end_frame": 288,
+        "start_sec": 2.5999999046325684,
+        "end_sec": 2.890000104904175,
+        "duration_sec": 0.3,
+        "start_f0_hz": 168.42108154296875,
+        "end_f0_hz": 88.3978042602539,
+        "slope_st": -11.166584014892578,
+        "label": "falling",
+        "confidence": 0.9
+      },
+      {
+        "start_frame": 290,
+        "end_frame": 328,
+        "start_sec": 2.9200000762939453,
+        "end_sec": 3.2899999618530273,
+        "duration_sec": 0.38,
+        "start_f0_hz": 94.11763763427734,
+        "end_f0_hz": 107.38256072998047,
+        "slope_st": -3.723501205444336,
+        "label": "falling",
+        "confidence": 0.8602917671203614
+      },
+      {
+        "start_frame": 340,
+        "end_frame": 356,
+        "start_sec": 3.4200000762939453,
+        "end_sec": 3.569999933242798,
+        "duration_sec": 0.16,
+        "start_f0_hz": 123.07693481445312,
+        "end_f0_hz": 149.53273010253906,
+        "slope_st": 8.801931381225586,
+        "label": "dipping",
+        "confidence": 0.8640244483947754
+      },
+      {
+        "start_frame": 358,
+        "end_frame": 366,
+        "start_sec": 3.5999999046325684,
+        "end_sec": 3.6700000762939453,
+        "duration_sec": 0.08,
+        "start_f0_hz": 103.22582244873047,
+        "end_f0_hz": 96.96969604492188,
+        "slope_st": -0.3465099334716797,
+        "label": "neutral",
+        "confidence": 0.6
+      },
+      {
+        "start_frame": 369,
+        "end_frame": 373,
+        "start_sec": 3.7100000381469727,
+        "end_sec": 3.740000009536743,
+        "duration_sec": 0.04,
+        "start_f0_hz": 253.96826171875,
+        "end_f0_hz": 231.88404846191406,
+        "slope_st": 0.0,
+        "label": "neutral",
+        "confidence": 0.62
+      }
+    ]
+  },
+  "processing": {
+    "spectral_bottleneck_alpha_mean": 0.10494352132081985,
+    "spectral_bottleneck_alpha_max": 0.15600000321865082,
+    "sample_blend_mean": 0.10086942464113235,
+    "sample_blend_max": 0.1420000046491623,
+    "strength": 0.4
+  },
+  "source_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_smooth_verify/denoised/绿色_denoised.wav",
+  "candidate_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_metric_attack/final/recommended/balanced_phone_clean_male/绿色_denoised_balanced_phone_clean_male.wav",
+  "output_path": "/Users/hwy/Desktop/个人/26春/语音信号处理/期末proj/work_ppg_tone/final/recommended/ppg_tone_male/绿色_denoised_ppg_tone_male.wav",
+  "sample_rate": 16000
+}
