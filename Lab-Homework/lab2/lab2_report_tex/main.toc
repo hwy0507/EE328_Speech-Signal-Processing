@@ -1,0 +1,28 @@
+\contentsline {section}{\numberline {1}实验目的}{3}{section.1}%
+\contentsline {section}{\numberline {2}实验环境}{3}{section.2}%
+\contentsline {section}{\numberline {3}Problem 1：分段标注与可懂度测试}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}题目要求逐条对应}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}ARPAbet 转写（对应要求1）}{3}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}分段标注方法（对应要求2）}{4}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}分段标注结果表（对应要求2）}{4}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}元音置零结果（对应要求3）}{5}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}辅音置零结果（对应要求4）}{6}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}可懂度判断（对应要求5）}{6}{subsection.3.7}%
+\contentsline {subsection}{\numberline {3.8}关键代码段}{6}{subsection.3.8}%
+\contentsline {section}{\numberline {4}Problem 2：元音录制、FFT 分析与 Praat 对比}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}题目要求逐条对应}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}MATLAB 录音与数据准备（对应要求1）}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}FFT 分析流程（对应要求2）}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}dB 频谱与峰值标注（对应要求3）}{7}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Praat 分析结果（对应要求4）}{9}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}FFT 与 Praat 对比（对应要求5）}{10}{subsection.4.6}%
+\contentsline {subsection}{\numberline {4.7}与标准值对比与分析}{10}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}关键代码段}{10}{subsection.4.8}%
+\contentsline {section}{\numberline {5}Problem 3：高通滤波抑制 DC/60Hz}{11}{section.5}%
+\contentsline {subsection}{\numberline {5.1}题目要求逐条对应}{11}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}任务说明}{12}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}滤波器设计}{12}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}量化结果与验证}{12}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}输出文件}{13}{subsection.5.5}%
+\contentsline {subsection}{\numberline {5.6}关键代码段}{13}{subsection.5.6}%
+\contentsline {section}{\numberline {6}全实验结论}{14}{section.6}%

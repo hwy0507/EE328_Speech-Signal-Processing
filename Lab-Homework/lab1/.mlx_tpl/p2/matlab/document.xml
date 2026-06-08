@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% Problem 2: 设计数字巴特沃斯低通滤波器
+% 定义题目给定的参数
+n_values = [2, 4, 6];       % 滤波器阶数
+Wn_values = [0.1, 0.3, 0.4]; % 归一化截止频率
+
+% 创建一个大图窗，里面包含 3 个子图 (对应 3 个 Wn)
+figure('Name', 'Butterworth Lowpass Filters', 'Position',[100, 100, 1000, 300], 'Color', 'w');
+
+for i = 1:length(Wn_values)
+    Wn = Wn_values(i);
+    
+    % 选择第 i 个子图
+    subplot(1, 3, i);
+    hold on; grid on;
+    
+    % 在同一个 Wn 下，遍历不同的阶数 n
+    for j = 1:length(n_values)
+        n = n_values(j);
+        
+        % 1. 设计滤波器 (获取分子系数 b 和分母系数 a)
+        [b, a] = butter(n, Wn, 'low');
+        
+        % 2. 计算频率响应 (1024 是计算的点数)
+        [h, w] = freqz(b, a, 1024);
+        
+        % 3. 绘制幅频响应曲线 (将频率转化为归一化频率，幅度转化为分贝 dB)
+        plot(w/pi, 20*log10(abs(h)), 'LineWidth', 1.5, 'DisplayName', ['n = ', num2str(n)]);
+    end
+    
+    % 设置图表格式
+    hold off;
+    title(sprintf('Cutoff Freq: Wn = %.1f', Wn));
+    xlabel('Normalized Frequency (\times\pi rad/sample)');
+    ylabel('Magnitude (dB)');
+    ylim([-80 5]); % 限制Y轴范围以便更好地观察衰减
+    legend('Location', 'southwest');
+end]]></w:t></w:r></w:p></w:body></w:document>

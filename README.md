@@ -1,8 +1,9 @@
-# EE328 Speech Signal Processing Project
+# EE328 Speech Signal Processing Repository
 
-Final course-project repository for speech anonymization and voice-conversion demos. The repository is intentionally split into two independently readable subprojects:
+Course repository containing both the regular lab homework archive and the final project implementation.
 
-- `final_ui/`: the integrated local GUI application used for feature demonstration
+- `Lab-Homework/`: semester lab assignments, reports, and submission bundles
+- `final_ui/`: the integrated local GUI application used for final-project demonstration
 - `anonymization/`: the standalone voice-anonymization pipeline and evaluation workflow
 
 ## Repository Layout
@@ -10,11 +11,35 @@ Final course-project repository for speech anonymization and voice-conversion de
 ```text
 期末proj/
 ├── README.md
+├── Lab-Homework/
 ├── final_ui/
 └── anonymization/
 ```
 
 ## Subprojects
+
+### `Lab-Homework/`
+
+Coursework archive for the regular speech-signal-processing labs.
+
+Typical contents per lab:
+
+- assignment PDF
+- submitted report PDF / Markdown / LaTeX source
+- MATLAB source (`.m`, `.mlx`)
+- packaged submission zip files
+- generated figures or audio used in the report
+
+Repository role:
+
+- retained as a course record
+- not required by the final anonymization pipeline at runtime
+- useful for tracing how earlier lab work connects to the final project
+
+Maintenance note:
+
+- lab folders are treated as mostly frozen archival material
+- obvious local build artifacts are ignored by the repository where possible
 
 ### `final_ui/`
 
@@ -99,6 +124,7 @@ For contributors who only need the core implementation path, start from:
 
 Representative artifacts are kept with the corresponding subproject instead of being lifted to the repository root:
 
+- lab reports and archived submissions: `Lab-Homework/`
 - evaluation reports and figures: `anonymization/文档/`
 - anonymized demo audio and benchmark material: `anonymization/文档/`
 - GUI usage notes and submission-facing docs: `final_ui/文档/`
@@ -106,6 +132,7 @@ Representative artifacts are kept with the corresponding subproject instead of b
 ## Maintenance Notes
 
 - Root-level structure is intentionally minimal; feature-specific assets stay inside their owning subproject.
+- `Lab-Homework/` is the archival course-lab layer.
 - `final_ui/` is the presentation-facing application layer.
 - `anonymization/` is the research/algorithm layer for the privacy pipeline.
 - When extending the project, prefer updating subproject-local README and docs first, then keep this root README limited to architecture and navigation.

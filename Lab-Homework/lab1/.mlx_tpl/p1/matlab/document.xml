@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[%% 语音信号读取与分段绘图 (练习 2.32 & 2.33)
+% 在这里定义题目要求的参数
+filename = 'mhint_01_01.wav'; % 确保文件在当前文件夹中
+fstart = 2000;                % 起始采样点
+M_msec = 100;                 % 每行显示的毫秒数
+N = 22000;                    % 总共要绘制的采样点数
+
+%% 第一步：读取音频并播放
+[y, fs] = audioread(filename);
+
+% 播放音频 (注意：运行到这里电脑会发声)
+disp('正在播放音频，请记录听到的句子...');
+sound(y, fs); 
+
+%% 第二步：参数计算与信号截取
+% 将 100 毫秒转换为对应的采样点数 M
+M = round((M_msec / 1000) * fs); 
+
+% 截取我们需要绘制的信号片段 (加入防越界保护)
+fend = min(fstart + N - 1, length(y));
+y_segment = y(fstart:fend);
+N_actual = length(y_segment); % 实际截取到的点数
+
+%% 第三步：练习 2.32 - 手动分段绘图 (每 4 行一个图窗)
+% 在实时脚本中，每次调用 figure 会生成一个新的内嵌图片块
+disp('=== 正在生成 2.32 要求的局部子图 ===');
+num_lines = ceil(N_actual / M); 
+lines_per_page = 4;      
+
+for k = 1:num_lines
+    subplot_idx = mod(k - 1, lines_per_page) + 1;
+    
+    % 每满 4 行，创建一个新的内嵌图窗
+    if subplot_idx == 1
+        figure('Color', 'w'); 
+    end
+    
+    % 提取当前行的数据
+    idx_start = (k-1)*M + 1;
+    idx_end = min(k*M, N_actual);
+    line_data = y_segment(idx_start:idx_end);
+    
+    % 计算时间轴
+    t_line = (fstart + idx_start - 2 + (1:length(line_data))) / fs;
+    
+    % 绘制子图
+    subplot(lines_per_page, 1, subplot_idx);
+    plot(t_line, line_data, 'b'); % 用蓝色线条画图
+    axis tight;
+    title(sprintf('Line %d (Samples %d to %d)', k, fstart+idx_start-1, fstart+idx_end-1));
+    xlabel('Time (sec)');
+    ylabel('Amplitude');
+end
+
+%% 第四步：练习 2.33 - 使用 strips 函数绘制
+disp('=== 正在生成 2.33 要求的 strips 带状图 ===');
+figure('Color', 'w');
+
+% strips(数据, 每段时长(秒), 采样率)
+strips(y_segment, M_msec/1000, fs);
+
+title(sprintf('Exercise 2.33: Speech Signal using strips()'));
+xlabel('Time (sec)');
+ylabel('Amplitude');]]></w:t></w:r></w:p></w:body></w:document>

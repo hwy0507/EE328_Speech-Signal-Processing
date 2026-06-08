@@ -1,0 +1,12 @@
+Problem 2(a)
+Truncation error range: [-0.1250000000, 0.0000000000]
+Rounding error range: [-0.1250000000, 0.0620000000]
+
+Problem 2(b)
+10 bits: noise variance = 3.1540065293e-07, SNR = 50.242752 dB
+8 bits: noise variance = 4.94253385225e-06, SNR = 38.291433 dB
+4 bits: noise variance = 0.00100197492654, SNR = 15.220733 dB
+
+Problem 2(c)
+Mean spectral difference, 10-bit noise minus 8-bit noise: -11.927765 dB
+Absolute 8-bit minus 10-bit noise-level increase: 11.927765 dB

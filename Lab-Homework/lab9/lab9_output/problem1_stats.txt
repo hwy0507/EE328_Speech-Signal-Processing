@@ -1,0 +1,7 @@
+Problem 1 statistics for out_s1_s6.wav
+Mean: 0.0001464778
+Variance: 0.0300428120
+Minimum: -0.9999694824
+Maximum: 0.9999694824
+Samples: 117593
+Duration: 14.699125 s
